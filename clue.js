@@ -224,8 +224,10 @@ clue.Player = {
         return;
     },
     get_guess: function() { return {suspect: "Mrs. White", weapon: "Rope", room: "Ballroom"}},
-    record_evidence: function(evidence) {
-        this.record[evidence.card] = evidence.player;
+    record_evidence: function(suggester, disputer, card) {
+        if (card) {
+            this.record[card] = disputer;
+        }
     },
     suggest: function() {
         var guess = this.get_guess();
@@ -233,11 +235,20 @@ clue.Player = {
             return;
         }
         var found = false;
-        for (var jj = 1; jj < this.game.hands.length; jj++) {
-            var other_player = this.game.players[(this.num + jj) % this.game.nplayers];
+        for (var ii = 1; ii < this.game.hands.length; ii++) {
+            var other_player_num = (this.num + ii) % this.game.nplayers;
+            var other_player = this.game.players[other_player_num];
             var evidence = other_player.check_guess(guess);
             if (evidence) {
-                this.record_evidence(evidence);
+                this.record_evidence(this, other_player, evidence.card);
+                for (var jj = 1; jj < this.game.hands.length; jj++) {
+                    var third_player_num = (this.num + jj) % this.game.nplayers;
+                    if (third_player_num == other_player_num) {
+                        continue;
+                    }
+                    var third_player = this.game.players[third_player_num];
+                    third_player.record_evidence(this, other_player);
+                }
                 return evidence;
             }
         }
