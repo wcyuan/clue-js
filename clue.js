@@ -1,37 +1,38 @@
 // ---------------------------------------------------------- //
 if (typeof wd == "undefined") {
-  var clue = {
-      "SUSPECTS": [
-	  "Miss Scarlett",
-	  "Professor Plum",
-	  "Mrs. Peacock",
-	  "Mr. Green",
-	  "Colonel Mustard",
-	  "Mrs. White"],
-      "WEAPONS": [
-	  "Candlestick",
-	  "Knife",
-	  "Lead Pipe",
-	  "Revolver",
-	  "Rope",
-	  "Wrench"],
-      "ROOMS": [
-	  "Kitchen",
-	  "Ballroom",
-	  "Conservatory",
-	  "Dining Room",
-	  "Billiard Room",
-	  "Library",
-	  "Lounge",
-	  "Hall",
-	  "Study"]
-  };
+    var clue = {
+        DEFAULT_NPLAYERS: 4,
+        DEFAULT_SUSPECTS: [
+            "Miss Scarlett",
+            "Professor Plum",
+            "Mrs. Peacock",
+            "Mr. Green",
+            "Colonel Mustard",
+            "Mrs. White"],
+        DEFAULT_WEAPONS: [
+            "Candlestick",
+            "Knife",
+            "Lead Pipe",
+            "Revolver",
+            "Rope",
+            "Wrench"],
+        DEFAULT_ROOMS: [
+            "Kitchen",
+            "Ballroom",
+            "Conservatory",
+            "Dining Room",
+            "Billiard Room",
+            "Library",
+            "Lounge",
+            "Hall",
+            "Study"],
+    };
 }
 
 // ---------------------------------------------------------- //
 
 clue.main = function() {
-    
+
 };
 
 // ---------------------------------------------------------- //
@@ -47,10 +48,10 @@ clue.randint = function(min, max) {
 // Modifies the given array
 clue.shuffle = function(array) {
     for (var ii = 0; ii < array.length; ii++) {
-	var switchwith = clue.randint(0, array.length);
-	var temp = array[ii];
-	array[ii] = array[switchwith];
-	array[switchwith] = temp;
+        var switchwith = clue.randint(0, array.length);
+        var temp = array[ii];
+        array[ii] = array[switchwith];
+        array[switchwith] = temp;
     }
     return array;
 };
@@ -65,20 +66,20 @@ clue.choose = function(array) {
 // Does not modify the given arrays
 clue.deal = function(nplayers, suspects, weapons, rooms) {
     if (!suspects) {
-	suspects = clue.SUSPECTS;
+        suspects = clue.DEFAULT_SUSPECTS;
     }
     if (!weapons) {
-	weapons = clue.WEAPONS;
+        weapons = clue.DEFAULT_WEAPONS;
     }
     if (!rooms) {
-	rooms = clue.ROOMS;
+        rooms = clue.DEFAULT_ROOMS;
     }
     suspects = suspects.slice();
     weapons = weapons.slice();
     rooms = rooms.slice();
 
     if (!nplayers) {
-	nplayers = 4;
+        nplayers = clue.DEFAULT_NPLAYERS;
     }
     var suspect = clue.choose(suspects);
     var weapon = clue.choose(weapons);
@@ -87,117 +88,216 @@ clue.deal = function(nplayers, suspects, weapons, rooms) {
     var deck = clue.shuffle(suspects.concat(weapons).concat(rooms));
     var hands = [];
     for (var ii = 0; ii < nplayers; ii++) {
-	hands[ii] = [];
+        hands[ii] = [];
     }
     for (var ii = 0; ii < deck.length; ii++) {
-	hands[ii % nplayers].push(deck[ii]);
+        hands[ii % nplayers].push(deck[ii]);
     }
     return [answer, hands];
 };
 
-clue.get_guess = function(name, list, num_tries) {
+clue.get_user_guess = function(name, list, num_tries) {
     var prompt_string = "Enter " + name + ":";
     var full_prompt = prompt_string;
     if (!num_tries) {
-	num_tries = 3;
+        num_tries = 3;
     }
     for (var ii = 0; ii < num_tries; ii++) {
-	var val = prompt(full_prompt);
-	if (list.includes(val)) {
-	    return val;
-	}
-	if (!val) {
-	    console.log("No " + name + " entered, quitting");
-	    return;
-	}
-	full_prompt = "Invalid " + name + " '" + val +
-	    "'.  Must be one of " + list + ".  " + prompt_string;
+        var val = prompt(full_prompt);
+        if (list.includes(val)) {
+            return val;
+        }
+        if (!val) {
+            console.log("No " + name + " entered, quitting");
+            return;
+        }
+        full_prompt = "Invalid " + name + " '" + val +
+            "'.  Must be one of " + list + ".  " + prompt_string;
     }
     console.log(num_tries + " failed attempts to enter a " + name + ", quitting");
     return;
 };
 
-clue.check_guess = function(guess, answer, hands, player_num) {
-    if (guess[0] == answer[0] && guess[1] == answer[1] && guess[2] == answer[2]) {
-	return "";
+clue.object_equals = function(obj1, obj2) {
+    for (var key in obj1) {
+        if (!(key in obj2)) {
+            return false;
+        }
+        if (obj1[key] != obj2[key]) {
+            return false;
+        }
     }
-    for (var ii = 1; ii < hands.length; ii++) {
-	var hand_num = (ii+player_num) % hands.length;
-	var matches = hands[hand_num].filter(
-	    function (card) {
-		return guess.includes(card);
-	    });
-	if (matches.length > 0) {
-	    return "Player " + hand_num + " has card " +
-		matches[clue.randint(0, matches.length)];
-	}
+    for (var key in obj2) {
+        if (!(key in obj1)) {
+            return false;
+        }
     }
-    return "No one can prove that guess wrong";
+    return true;
 };
 
-clue.hand_string = function(hand, suspects, weapons, rooms) {
-    if (!suspects) {
-	suspects = clue.SUSPECTS;
+clue.Game = {
+    create: function(nplayers, suspects, weapons, rooms) {
+        var self = Object.create(this);
+        if (!suspects) {
+            suspects = clue.DEFAULT_SUSPECTS;
+        }
+        if (!weapons) {
+            weapons = clue.DEFAULT_WEAPONS;
+        }
+        if (!rooms) {
+            rooms = clue.DEFAULT_ROOMS;
+        }
+        if (!nplayers) {
+            nplayers = clue.DEFAULT_NPLAYERS;
+        }
+
+        self.suspects = suspects;
+        self.weapons = weapons;
+        self.rooms = rooms;
+        self.nplayers = nplayers;
+        var answer_hands = clue.deal(nplayers, suspects, weapons, rooms);
+        self.answer = answer_hands[0];
+        self.hands = answer_hands[1];
+        var ii = 0;
+        self.players = self.hands.map(function(hand) {
+            return clue.Player.create(self, hand, ii, "Player " + (++ii));
+        });
+        self.players[0] = clue.UserPlayer.create(self, self.hands[0], 0, "User");
+        // XXX
+        self.print_all();
+        return self;
+    },
+    hand_string: function(hand) {
+        var elts = [["Suspects", this.suspects], ["Weapons", this.weapons], ["Rooms", this.rooms]];
+        var output = "";
+        for (var ii = 0; ii < elts.length; ii++) {
+            output += elts[ii][0] + ": " + hand.filter(
+                    function(elt) {
+                        return elts[ii][1].includes(elt);
+                    }).join(", ") + "\n";
+        }
+        return output;
+    },
+    print_all: function() {
+        self = this;
+        console.log(this.answer);
+        this.players.map(function(player) {
+            console.log(player.name);
+            console.log(self.hand_string(player.hand));
+        });
+    },
+ };
+
+Object.prototype.extend = function (extension) {
+    var hasOwnProperty = Object.hasOwnProperty;
+    var object = Object.create(this);
+
+    for (var property in extension)
+        if (hasOwnProperty.call(extension, property) ||
+            typeof object[property] === "undefined")
+                object[property] = extension[property];
+
+    return object;
+};
+
+clue.Player = {
+    create: function(game, hand, num, name) {
+        var self = Object.create(this);
+        self.game = game;
+        self.hand = hand;
+        self.name = name;
+        self.num = num;
+        self.record = {};
+        return self;
+    },
+    check_guess: function(guess) {
+        var matches = this.hand.filter(
+                function (card) {
+                    return Object.keys(guess).map(function(k) {return guess[k];}).includes(card);
+                });
+        if (matches.length > 0) {
+            return {
+                player: this,
+                card: matches[clue.randint(0, matches.length)],
+            };
+        }
+        return;
+    },
+    get_guess: function() { return {suspect: "Mrs. White", weapon: "Rope", room: "Ballroom"}},
+    record_evidence: function(evidence) {
+        this.record[evidence.card] = evidence.player;
+    },
+    suggest: function() {
+        var guess = this.get_guess();
+        if (!guess) {
+            return;
+        }
+        var found = false;
+        for (var jj = 1; jj < this.game.hands.length; jj++) {
+            var other_player = this.game.players[(this.num + jj) % this.game.nplayers];
+            var evidence = other_player.check_guess(guess);
+            if (evidence) {
+                this.record_evidence(evidence);
+                return evidence;
+            }
+        }
+        return;
+    },
+}
+
+clue.UserPlayer = clue.Player.extend({
+    get_guess: function () {
+        var suspect = clue.get_user_guess("Suspect", this.game.suspects);
+        if (!suspect) {
+            console.log("No guessed suspect, quitting");
+            return;
+        }
+        var weapon = clue.get_user_guess("Weapon", this.game.weapons);
+        if (!weapon) {
+            console.log("No guessed weapon, quitting");
+            return;
+        }
+        var room = clue.get_user_guess("Room", this.game.rooms);
+        if (!room) {
+            console.log("No guessed room, quitting");
+            return;
+        }
+        return {'suspect': suspect, 'weapon': weapon, 'room': room};
+    },
+});
+
+clue.play_round = function(game, player_num) {
+    for (var ii = 0; ii < game.hands.length; ii++) {
+        var player = game.players[(player_num + ii) % game.nplayers];
+        var evidence = player.suggest();
+        if (evidence) {
+            console.log(evidence.player.name + " has " + evidence.card);
+        } else {
+            console.log("No one can dispute that guess");
+            return false;
+        }
     }
-    if (!weapons) {
-	weapons = clue.WEAPONS;
+    return true;
+};
+
+clue.accuse = function(game, guess) {
+    if (clue.object_equal(game.answer, guess)) {
+        console.log("You got it!");
     }
-    if (!rooms) {
-	rooms = clue.ROOMS;
+    else {
+        console.log("No, that's not right");
     }
-    var elts = [["Suspects", suspects], ["Weapons", weapons], ["Rooms", rooms]];
-    var output = "";
-    for (var ii = 0; ii < elts.length; ii++) {
-	output += elts[ii][0] + ": " + hand.filter(
-	    function(elt) {
-		return elts[ii][1].includes(elt);
-	    }).join(", ") + "\n";
-    }
-    return output;
 };
 
 clue.play_game = function(nplayers, suspects, weapons, rooms) {
-    if (!suspects) {
-	suspects = clue.SUSPECTS;
-    }
-    if (!weapons) {
-	weapons = clue.WEAPONS;
-    }
-    if (!rooms) {
-	rooms = clue.ROOMS;
-    }
-    if (!nplayers) {
-	nplayers = 4;
-    }
-
-    var answer_hands = clue.deal(nplayers, suspects, weapons, rooms);
-    var answer = answer_hands[0];
-    var hands = answer_hands[1];
-    while (true) {
-	console.log(clue.hand_string(hands[0], suspects, weapons, rooms));
-	console.log("Guess -- ");
-	var suspect = clue.get_guess("Suspect", suspects);
-	if (!suspect) {
-	    console.log("No guessed suspect, quitting");
-	    break;
-	}
-	var weapon = clue.get_guess("Weapon", weapons);
-	if (!weapon) {
-	    console.log("No guessed weapon, quitting");
-	    break;
-	}
-	var room = clue.get_guess("Room", rooms);
-	if (!room) {
-	    console.log("No guessed room, quitting");
-	    break;
-	}
-	var reply = clue.check_guess([suspect, weapon, room], answer, hands, 0);
-	if (reply) {
-	    console.log(reply);
-	} else {
-	    console.log("You got it!");
-	    break;
-	}
+    var game = clue.Game.create(nplayers, suspects, weapons, rooms);
+    for (var ii = 0; ii < 10; ii++) {
+    // while (true) {
+        console.log(game.hand_string(game.players[0].hand));
+        console.log("Guess -- ");
+        if (!clue.play_round(game, 0)) {
+            break;
+        }
     }
 };
 
