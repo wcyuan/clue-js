@@ -48,8 +48,24 @@ if (typeof wd == "undefined") {
 
 // ---------------------------------------------------------- //
 
-clue.main = function() {
+addEventListener = function(el, type, fn) { 
+    if (el.addEventListener) { 
+        el.addEventListener(type, fn, false); 
+        return true; 
+    } else if (el.attachEvent) { 
+        var r = el.attachEvent("on" + type, fn); 
+        return r; 
+    } else { 
+        return false; 
+    } 
+};
 
+clue.main = function() {
+    clue.current_game = clue.Game.create();
+	var suggest = document.getElementById("suggest");
+	addEventListener(suggest, "click", function() {
+		clue.play_round(clue.current_game);
+	});
 };
 
 // ---------------------------------------------------------- //
@@ -175,12 +191,16 @@ clue.Game = {
         var answer_hands = clue.deal(nplayers, suspects, weapons, rooms);
         self.answer = answer_hands[0];
         self.hands = answer_hands[1];
+        self.set_players();
+        return self;
+    },
+    set_players: function() {
+        var self = this;
         var ii = 0;
         self.players = self.hands.map(function(hand) {
-            return clue.ComputerPlayer2.create(self, hand, ii, "Player " + (++ii));
+            return clue.ComputerPlayer2.create(self, hand, "Player " + (++ii));
         });
-        self.players[0] = clue.ConsolePlayer.create(self, self.hands[0], 0, "User");
-        return self;
+        self.players[0] = clue.HtmlPlayer.create(self, self.hands[0], "User");
     },
     hand_string: function(hand) {
         var elts = [["Suspects", this.suspects], ["Weapons", this.weapons], ["Rooms", this.rooms]];
@@ -216,12 +236,11 @@ Object.prototype.extend = function (extension) {
 };
 
 clue.Player = {
-    create: function(game, hand, num, name) {
+    create: function(game, hand, name) {
         var self = Object.create(this);
         self.game = game;
         self.hand = hand;
         self.name = name;
-        self.num = num;
         self.record = {};
         return self;
     },
@@ -293,22 +312,90 @@ clue.ConsolePlayer = clue.Player.extend({
             console.log("No guessed room, quitting");
             return;
         }
-        return {'suspect': suspect, 'weapon': weapon, 'room': room};
+        return {suspect: suspect, weapon: weapon, room: room};
+    },
+    display_output: function(msg) {
+        return console.log(msg);
     },
     record_evidence: function(suggester, guess, disputer, card) {
         clue.Player.record_evidence.call(this, suggester, guess, disputer, card);
-        console.log(suggester.name + " guessed: " + Object.keys(guess).map(function(k) {return guess[k];}));
+        this.display_output(suggester.name + " guessed: " + Object.keys(guess).map(function(k) {return guess[k];}));
         if (!disputer) {
-            console.log("No one could dispute that guess");
+            this.display_output("No one could dispute that guess");
         } else if (!card) {
-            console.log(disputer.name + " disputed the guess");
+            this.display_output(disputer.name + " disputed the guess");
         } else {
-            console.log(disputer.name + " has " + card);
+            this.display_output(disputer.name + " has " + card);
         }
     },
 });
 
+clue.HtmlPlayer = clue.ConsolePlayer.extend({
+    create: function(game, hand, name) {
+        var self = clue.Player.create.call(this, game, hand, name);
+        clue.html.setup(game);
+        clue.html.display_hand(hand, game);
+        return self;
+    },
+    get_guess: function() {
+        return {
+            suspect: clue.html.get_select_value("suspects"),
+            weapon: clue.html.get_select_value("weapons"),
+            room: clue.html.get_select_value("rooms"),
+        };
+    },
+    display_output: function(msg) {
+        clue.html.log_output(msg + "\n");
+    },
+});
+
+clue.html = {
+    setup: function(game) {
+        var suspects  = document.getElementById("suspects");
+        for (var ii = 0; ii < game.suspects.length; ii++) {
+            suspects.add(new Option(game.suspects[ii]));
+        }
+        var weapons  = document.getElementById("weapons");
+        for (var ii = 0; ii < game.weapons.length; ii++) {
+            weapons.add(new Option(game.weapons[ii]));
+        }
+        var rooms  = document.getElementById("rooms");
+        for (var ii = 0; ii < game.rooms.length; ii++) {
+            rooms.add(new Option(game.rooms[ii]));
+        }
+        var hand = document.getElementById("hand");
+        hand.style.height = "50";
+        hand.style.width = "100%";
+        var log = document.getElementById("log");
+        log.style.height = "200";
+        log.style.width = "100%";
+    },
+    get_select_value: function(id) {
+        var select = document.getElementById(id);
+        return select.options[select.selectedIndex].value;
+    },
+    add_value: function(id, text) {
+        var elt = document.getElementById(id);
+        elt.innerHTML += text;
+    },
+    set_value: function(id, text) {
+        var elt = document.getElementById(id);
+        elt.innerHTML = text;
+    },
+    display_hand: function(hand, game) {
+        this.set_value("hand", game.hand_string(hand)); 
+    },
+    log_output: function(msg) {
+        this.add_value("log", msg);
+        var log = document.getElementById("log");
+        log.scrollTop = log.scrollHeight;
+    },
+};
+
 clue.play_round = function(game, start_num) {
+    if (!start_num) {
+        start_num = 0;
+    }
     for (var ii = 0; ii < game.nplayers; ii++) {
         var player_num = (start_num + ii) % game.nplayers;
         var player = game.players[player_num];
@@ -352,6 +439,14 @@ clue.accuse = function(game, guess) {
     }
 };
 
+clue.make_game = function(debug, nplayers, suspects, weapons, rooms) {
+    var game = clue.Game.create(nplayers, suspects, weapons, rooms);
+    if (debug) {
+        game.print_all();
+    }
+    return game;
+};
+
 clue.play_game = function(debug, nplayers, suspects, weapons, rooms) {
     var game = clue.Game.create(nplayers, suspects, weapons, rooms);
     if (debug) {
@@ -365,5 +460,6 @@ clue.play_game = function(debug, nplayers, suspects, weapons, rooms) {
     }
 };
 
+clue.main();
 
 // ---------------------------------------------------------- //

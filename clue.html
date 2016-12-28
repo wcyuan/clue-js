@@ -1,8 +1,23 @@
-<html>
-<head>
-  <script type="text/javascript" src="clue.js"></script>
-</head>
+<html> 
+    <head> 
+        <meta name=viewport content="width=device-width, initial-scale=1">
+    </head>
 <body>
-Open the javascript console and type "clue.play_game()"
+<form action="javascript:void(0);">
+    <textarea id="hand" readOnly=true></textarea>
+    <hr>
+    <select id="suspects" name="suspects"></select>
+    <select id="weapons" name="weapons"></select>
+    <select id="rooms" name="rooms"></select>
+    <hr>
+    <input id="suggest" type="submit" value="suggest">
+    <input id="accuse" type="button" value="accuse">
+    <input id="new game" type="button" value="new game">
+    <hr>
+    <div id="notes"></div>
+    <hr>
+    <textarea id="log" readOnly=true></textarea>
+</form>
+<script type="text/javascript" src="clue.js"></script>
 </body>
 </html>
