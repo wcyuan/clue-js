@@ -80,7 +80,6 @@ clue.main = function() {
             notes.style.display = "none";
         }
 	});
-
 };
 
 // ---------------------------------------------------------- //
@@ -91,7 +90,6 @@ clue.randint = function(min, max) {
     max = Math.floor(max);
     return Math.floor(Math.random() * (max - min)) + min;
 };
-
 
 // Modifies the given array
 clue.shuffle = function(array) {
@@ -403,13 +401,25 @@ clue.html = {
                 row.appendChild(td);
                 var label = document.createElement("INPUT");
                 td.appendChild(label);
-                label.setAttribute("class", "label");
                 label.setAttribute("value", text);
                 label.setAttribute("readOnly", true);
-                var input = document.createElement("INPUT");
-                td.appendChild(input);
-                input.setAttribute("type", "text");
-                input.style.width = 50;
+                if (text) {
+                    /*
+                     * this is if you want text box notes where you can put anything
+                    var input = document.createElement("INPUT");
+                    td.appendChild(input);
+                    input.setAttribute("type", "text");
+                    input.style.width = 50;
+                    */
+                    // These notes give you a checkbox for each player + 1
+                    // but leaves them unlabeled -- you can choose how to use them
+                    for (var num = 0; num <= game.nplayers; num++) {
+                        var radio = document.createElement("INPUT");
+                        //td.appendChild(document.createTextNode(num));
+                        td.appendChild(radio);
+                        radio.setAttribute("type", "checkbox");
+                    }
+                }
             }
             add_elt(suspect);
             add_elt(weapon);
