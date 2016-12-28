@@ -1,13 +1,4 @@
 // TODO:
-//    [ ] show the user their hand
-//    [ ] add drop down menus or radio buttons for the user to make a guess
-//    [ ] add suggest + accuse buttons
-//    [ ] add a place where users can record what they've seen
-//        - a list of all the cards
-//          for each card, either a dropdown with the list of player names
-//          or just an empty text field where you can put anything
-//          maybe both
-//    [ ] add a scrolling text box that shows a record of all the activity
 //    [ ] model the room that the user is in, and moving between rooms
 //        players can only suggest about the room they are in
 //    [ ] users should be able to choose which card to show when
@@ -65,6 +56,10 @@ clue.main = function() {
 	var suggest = document.getElementById("suggest");
 	addEventListener(suggest, "click", function() {
 		clue.play_round(clue.current_game);
+	});
+	var accuse = document.getElementById("accuse");
+	addEventListener(accuse, "click", function() {
+		clue.allow_accusation(clue.current_game.players[0], clue.current_game.players[0].get_guess());
 	});
     var new_game = document.getElementById("new_game");
 	addEventListener(new_game, "click", function() {
@@ -130,7 +125,7 @@ clue.deal = function(nplayers, suspects, weapons, rooms) {
     var suspect = clue.choose(suspects);
     var weapon = clue.choose(weapons);
     var room = clue.choose(rooms);
-    var answer = [suspect, weapon, room];
+    var answer = {suspect: suspect, weapon: weapon, room: room};
     var deck = clue.shuffle(suspects.concat(weapons).concat(rooms));
     var hands = [];
     for (var ii = 0; ii < nplayers; ii++) {
@@ -255,6 +250,7 @@ clue.Player = {
         self.hand = hand;
         self.name = name;
         self.record = {};
+        self.accusation = {};
         return self;
     },
     check_guess: function(guess) {
@@ -271,13 +267,67 @@ clue.Player = {
         return;
     },
     get_guess: function() {},
+    MARK_INDISPUTABLE_CARD: -1,
+    filter_seen: function(arr, include_suspected) {
+        var self = this;
+        return arr.filter(function(card) {
+            if (self.hand.includes(card)) {
+                return false;
+            }
+            if (card in self.record) {
+                if (self.record[card] != self.MARK_INDISPUTABLE_CARD) {
+                    return false;
+                }
+            }
+            return true;
+        });
+    },
     record_evidence: function(suggester, guess, disputer, card) {
+        // console.log(this.name + " -- " + suggester.name + " guessed: " + Object.keys(guess).map(function(k) {return guess[k];}));
         if (card && this != disputer) {
             this.record[card] = disputer;
         }
+        var categories = [["suspect", "suspects"], ["weapon", "weapons"], ["room", "rooms"]];
+        if (suggester == this && !disputer) {
+            for (var ii = 0; ii < categories.length; ii++) {
+                var field = categories[ii][0];
+                this.record[guess[field]] = this.MARK_INDISPUTABLE_CARD;
+                this.accusation[field] = guess[field];
+            }
+        }
+        this.check_records();
+    },
+    check_records: function() {
+        var self = this;
+        var categories = [["suspect", "suspects"], ["weapon", "weapons"], ["room", "rooms"]];
+        for (var ii = 0; ii < categories.length; ii++) {
+            var field = categories[ii][0];
+            var plural = categories[ii][1];
+            var indisputable = this.game[plural].filter(function(card) {
+                return card in self.record && self.record[card] == self.MARK_INDISPUTABLE_CARD;
+            });
+            if (indisputable.length == 1) {
+                this.accusation[field] = indisputable[0];
+            } else {
+                var poss = this.filter_seen(this.game[plural]); 
+                if (poss.length == 1) {
+                    this.accusation[field] = poss[0];
+                } else {
+                    delete this.accusation[field];
+                }
+            }
+        }
+    },
+    make_accusation: function() {
+        if ("suspect" in this.accusation &&
+            "weapon" in this.accusation &&
+            "room" in this.accusation) {
+            return this.accusation;
+        }
+    },
+    record_accusation: function(accuser, accusation, result) {
     },
 }
-
 
 clue.ComputerPlayer1 = clue.Player.extend({
     get_guess: function() { return {suspect: "Mrs. White", weapon: "Rope", room: "Ballroom"}},
@@ -287,22 +337,27 @@ clue.ComputerPlayer2 = clue.Player.extend({
     // This player just guesses cards that it hasn't seen yet
     get_guess: function() {
         return {
-            suspect : clue.choose(this.filter_seen(this.game.suspects)),
-            weapon : clue.choose(this.filter_seen(this.game.weapons)),
-            room : clue.choose(this.filter_seen(this.game.rooms)),
+            suspect : this.choose_or_sub(this.filter_seen(this.game.suspects), this.game.suspects),
+            weapon : this.choose_or_sub(this.filter_seen(this.game.weapons), this.game.weapons),
+            room : this.choose_or_sub(this.filter_seen(this.game.rooms), this.game.rooms),
         };
     },
-    filter_seen: function(arr) {
+    choose_or_sub: function(results, fallback) {
         var self = this;
-        return arr.filter(function(card) {
-            if (self.hand.filter(function(hand_card) {return hand_card == card;}).length > 0) {
-                return false;
-            }
-            if (card in self.record) {
-                return false;
-            }
-            return true;
+        if (results.length > 0) {
+            return clue.choose(results);
+        }
+        var inhand = this.hand.filter(function(card) { return fallback.includes(card); });
+        if (inhand.length > 0) {
+            return inhand[0];
+        }
+        var accused = fallback.filter(function(card) {
+            return (card in self.record && self.record[card] == self.MARK_INDISPUTED_CARD);
         });
+        if (accused.length > 0) {
+            return accused[0];
+        }
+        return fallback[0];
     },
 });
 
@@ -327,6 +382,17 @@ clue.ConsolePlayer = clue.Player.extend({
         }
         return {suspect: suspect, weapon: weapon, room: room};
     },
+    record_accusation: function(accuser, accusation, result) {
+        this.display_output(accuser.name + " accused: " + Object.keys(accusation).map(function(k) {return accusation[k];}));
+        if (result) {
+            this.display_output("That's right!");
+            return true;
+        } else {
+            this.display_output("Sorry, that's not right.");
+            return false;
+        }
+    },
+    make_accusation: function() {},
     display_output: function(msg) {
         return console.log(msg);
     },
@@ -365,8 +431,13 @@ clue.HtmlPlayer = clue.ConsolePlayer.extend({
 clue.html = {
     setup: function(game) {
         var notes = document.getElementById("notes");
+        var existing = document.getElementById("note-table");
+        if (existing) {
+            notes.removeChild(existing);
+        }
         var table = document.createElement("TABLE");
         notes.appendChild(table);
+        table.setAttribute("id", "note-table");
         var suspects  = document.getElementById("suspects");
         for (var ii = 0; ii < game.suspects.length; ii++) {
             suspects.add(new Option(game.suspects[ii]));
@@ -431,6 +502,7 @@ clue.html = {
         var log = document.getElementById("log");
         log.style.height = "200";
         log.style.width = "100%";
+        this.set_value("log", "");
     },
     get_select_value: function(id) {
         var select = document.getElementById(id);
@@ -461,6 +533,7 @@ clue.play_round = function(game, start_num) {
     for (var ii = 0; ii < game.nplayers; ii++) {
         var player_num = (start_num + ii) % game.nplayers;
         var player = game.players[player_num];
+        // console.log("starting player " + player.name);
         var guess = player.get_guess();
         if (!guess) {
             return;
@@ -486,18 +559,24 @@ clue.play_round = function(game, start_num) {
             }
         }
         if (!found) {
-            player.record_evidence(player, guess);
+            for (var jj = 0; jj < game.nplayers; jj++) {
+                game.players[jj].record_evidence(player, guess);
+            }
         }
+        var accusation = player.make_accusation();
+        clue.allow_accusation(player, accusation);
+        // console.log("finished player " + player.name + " guess " + guess + " found " + found + " accusation " + accusation);
     }
     return true;
 };
 
-clue.accuse = function(game, guess) {
-    if (clue.object_equal(game.answer, guess)) {
-        console.log("You got it!");
-    }
-    else {
-        console.log("No, that's not right");
+clue.allow_accusation = function(player, accusation) {
+    var game = player.game;
+    if (accusation) {
+        var result = clue.object_equals(game.answer, accusation);
+        for (var jj = 0; jj < game.nplayers; jj++) {
+            game.players[jj].record_accusation(player, accusation, result);
+        }
     }
 };
 
