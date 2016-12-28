@@ -66,6 +66,21 @@ clue.main = function() {
 	addEventListener(suggest, "click", function() {
 		clue.play_round(clue.current_game);
 	});
+    var new_game = document.getElementById("new_game");
+	addEventListener(new_game, "click", function() {
+        clue.current_game = clue.Game.create();
+	});
+    var show_notes = document.getElementById("show_notes");
+	addEventListener(show_notes, "click", function() {
+        var notes = document.getElementById("notes");
+        var display = notes.style.display;
+        if (display == "none") {
+            notes.style.display = "inline";
+        } else {
+            notes.style.display = "none";
+        }
+	});
+
 };
 
 // ---------------------------------------------------------- //
@@ -351,6 +366,9 @@ clue.HtmlPlayer = clue.ConsolePlayer.extend({
 
 clue.html = {
     setup: function(game) {
+        var notes = document.getElementById("notes");
+        var table = document.createElement("TABLE");
+        notes.appendChild(table);
         var suspects  = document.getElementById("suspects");
         for (var ii = 0; ii < game.suspects.length; ii++) {
             suspects.add(new Option(game.suspects[ii]));
@@ -362,6 +380,40 @@ clue.html = {
         var rooms  = document.getElementById("rooms");
         for (var ii = 0; ii < game.rooms.length; ii++) {
             rooms.add(new Option(game.rooms[ii]));
+        }
+        for (var ii = 0;
+                ii < game.suspects.length || ii < game.weapons.length || ii < game.rooms.length;
+                ii++) {
+            var suspect = "";
+            var weapon = "";
+            var room = "";
+            if (ii < game.suspects.length) {
+                suspect = game.suspects[ii];
+            }
+            if (ii < game.weapons.length) {
+                weapon = game.weapons[ii];
+            }
+            if (ii < game.rooms.length) {
+                room = game.rooms[ii];
+            }
+            var row = document.createElement("TR");
+            table.appendChild(row);
+            function add_elt(text) {
+                var td = document.createElement("TD");
+                row.appendChild(td);
+                var label = document.createElement("INPUT");
+                td.appendChild(label);
+                label.setAttribute("class", "label");
+                label.setAttribute("value", text);
+                label.setAttribute("readOnly", true);
+                var input = document.createElement("INPUT");
+                td.appendChild(input);
+                input.setAttribute("type", "text");
+                input.style.width = 50;
+            }
+            add_elt(suspect);
+            add_elt(weapon);
+            add_elt(room);
         }
         var hand = document.getElementById("hand");
         hand.style.height = "50";
