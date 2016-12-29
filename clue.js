@@ -97,11 +97,14 @@ clue.shuffle = function(array) {
     return array;
 };
 
-// Modifies the given array
-clue.choose = function(array) {
+// If should_remove is true, this modifies the given array
+clue.choose = function(array, should_remove) {
     var choice_idx = clue.randint(0, array.length);
-    var choice = array.splice(choice_idx, 1);
-    return choice[0];
+    var choice = array[choice_idx];
+    if (should_remove) {
+        array.splice(choice_idx, 1);
+    }
+    return choice;
 };
 
 // Does not modify the given arrays
@@ -122,9 +125,9 @@ clue.deal = function(nplayers, suspects, weapons, rooms) {
     if (!nplayers) {
         nplayers = clue.DEFAULT_NPLAYERS;
     }
-    var suspect = clue.choose(suspects);
-    var weapon = clue.choose(weapons);
-    var room = clue.choose(rooms);
+    var suspect = clue.choose(suspects, true);
+    var weapon = clue.choose(weapons, true);
+    var room = clue.choose(rooms, true);
     var answer = {suspect: suspect, weapon: weapon, room: room};
     var deck = clue.shuffle(suspects.concat(weapons).concat(rooms));
     var hands = [];
@@ -200,15 +203,19 @@ clue.Game = {
         self.answer = answer_hands[0];
         self.hands = answer_hands[1];
         self.set_players();
+        self.round = 0;
         return self;
     },
     set_players: function() {
         var self = this;
-        var ii = 0;
-        self.players = self.hands.map(function(hand) {
-            return clue.ComputerPlayer2.create(self, hand, "Player " + (++ii));
-        });
-        self.players[0] = clue.HtmlPlayer.create(self, self.hands[0], "User");
+        self.players = [clue.HtmlPlayer.create(self, self.hands[0], "User")];
+        for (var ii = 1; ii < self.hands.length; ii++) {
+            var constructor = clue.ComputerPlayer2;
+            if (clue.randint(1, 2) == 1) {
+                constructor = clue.ComputerPlayer3;
+            }
+            self.players[ii] = constructor.create(self, self.hands[ii], "Player " + (ii + 1));
+        }
     },
     hand_string: function(hand) {
         var elts = [["Suspects", this.suspects], ["Weapons", this.weapons], ["Rooms", this.rooms]];
@@ -291,8 +298,11 @@ clue.Player = {
         if (suggester == this && !disputer) {
             for (var ii = 0; ii < categories.length; ii++) {
                 var field = categories[ii][0];
-                this.record[guess[field]] = this.MARK_INDISPUTABLE_CARD;
-                this.accusation[field] = guess[field];
+                var card = guess[field];
+                if (!this.hand.includes(card)) {
+                    this.record[guess[field]] = this.MARK_INDISPUTABLE_CARD;
+                    this.accusation[field] = guess[field];
+                }
             }
         }
         this.check_records();
@@ -361,6 +371,16 @@ clue.ComputerPlayer2 = clue.Player.extend({
     },
 });
 
+clue.ComputerPlayer3 = clue.ComputerPlayer2.extend({
+    get_guess: function() {
+        return {
+            suspect : clue.choose(this.game.suspects),
+            weapon : clue.choose(this.game.weapons),
+            room : clue.choose(this.game.rooms),
+        };
+    },
+});
+
 clue.ConsolePlayer = clue.Player.extend({
     get_guess: function () {
         console.log(this.game.hand_string(this.hand));
@@ -398,7 +418,10 @@ clue.ConsolePlayer = clue.Player.extend({
     },
     record_evidence: function(suggester, guess, disputer, card) {
         clue.Player.record_evidence.call(this, suggester, guess, disputer, card);
-        this.display_output(suggester.name + " guessed: " + Object.keys(guess).map(function(k) {return guess[k];}));
+        var round = this.game.round;
+        this.display_output("Round " + round + ": " +
+                suggester.name + " guessed: " +
+                Object.keys(guess).map(function(k) {return guess[k];}));
         if (!disputer) {
             this.display_output("No one could dispute that guess");
         } else if (!card) {
@@ -530,6 +553,7 @@ clue.play_round = function(game, start_num) {
     if (!start_num) {
         start_num = 0;
     }
+    game.round += 1;
     for (var ii = 0; ii < game.nplayers; ii++) {
         var player_num = (start_num + ii) % game.nplayers;
         var player = game.players[player_num];
