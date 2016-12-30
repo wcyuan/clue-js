@@ -585,20 +585,24 @@ clue.html = {
             add_elt(room);
         }
     },
+	// setup is called for every new game, so it must be idempotent
     setup: function(game) {
         // add cards to the drop down menus
-        var suspects  = document.getElementById("suspects");
-        for (var ii = 0; ii < game.suspects.length; ii++) {
-            suspects.add(new Option(game.suspects[ii]));
+        function remove_children(node) {
+			while (node.firstChild) {
+    			node.removeChild(node.firstChild);
+			}
         }
-        var weapons  = document.getElementById("weapons");
-        for (var ii = 0; ii < game.weapons.length; ii++) {
-            weapons.add(new Option(game.weapons[ii]));
-        }
-        var rooms  = document.getElementById("rooms");
-        for (var ii = 0; ii < game.rooms.length; ii++) {
-            rooms.add(new Option(game.rooms[ii]));
-        }
+		function set_options(id, list) {
+			var element  = document.getElementById(id);
+			remove_children(element);
+			for (var ii = 0; ii < list.length; ii++) {
+				element.add(new Option(list[ii]));
+			}
+		}
+		set_options("suspects", game.suspects);
+		set_options("weapons", game.weapons);
+		set_options("rooms", game.rooms);
         var notes = document.getElementById("notes");
         var existing = document.getElementById("note-table");
         if (existing) {
