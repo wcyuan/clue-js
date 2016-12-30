@@ -39,7 +39,7 @@ if (typeof wd == "undefined") {
 
 // ---------------------------------------------------------- //
 
-addEventListener = function(el, type, fn) { 
+clue.addEventListener = function(el, type, fn) { 
     if (el.addEventListener) { 
         el.addEventListener(type, fn, false); 
         return true; 
@@ -51,30 +51,35 @@ addEventListener = function(el, type, fn) {
     } 
 };
 
+clue.set_toggle_display = function(button_id, div_id) {
+    var button = document.getElementById(button_id);
+	clue.addEventListener(button, "click", function() {
+        var div_elt = document.getElementById(div_id);
+        var display = div_elt.style.display;
+        if (display == "none") {
+            div_elt.style.display = "inline";
+        } else {
+            div_elt.style.display = "none";
+        }
+	});
+};
+
 clue.main = function() {
     clue.current_game = clue.Game.create();
 	var suggest = document.getElementById("suggest");
-	addEventListener(suggest, "click", function() {
+	clue.addEventListener(suggest, "click", function() {
 		clue.play_round(clue.current_game);
 	});
 	var accuse = document.getElementById("accuse");
-	addEventListener(accuse, "click", function() {
+	clue.addEventListener(accuse, "click", function() {
 		clue.allow_accusation(clue.current_game.players[0], clue.current_game.players[0].get_guess());
 	});
     var new_game = document.getElementById("new_game");
-	addEventListener(new_game, "click", function() {
+	clue.addEventListener(new_game, "click", function() {
         clue.current_game = clue.Game.create();
 	});
-    var show_notes = document.getElementById("show_notes");
-	addEventListener(show_notes, "click", function() {
-        var notes = document.getElementById("notes");
-        var display = notes.style.display;
-        if (display == "none") {
-            notes.style.display = "inline";
-        } else {
-            notes.style.display = "none";
-        }
-	});
+    clue.set_toggle_display("show_notes", "notes");
+    clue.set_toggle_display("show_auto_notes", "auto_notes");
 };
 
 // ---------------------------------------------------------- //
@@ -106,6 +111,10 @@ clue.choose = function(array, should_remove) {
     }
     return choice;
 };
+
+clue.hash_values = function(hash) {
+    return Object.keys(hash).map(function(k) { return hash[k]; });
+}
 
 // Does not modify the given arrays
 clue.deal = function(nplayers, suspects, weapons, rooms) {
@@ -257,13 +266,17 @@ clue.Player = {
         self.hand = hand;
         self.name = name;
         self.record = {};
+        for (var ii = 0; ii < hand.length; ii++) {
+            self.record[hand[ii]] = self;
+        }
         self.accusation = {};
+        self.all_guesses = [];
         return self;
     },
     check_guess: function(guess) {
         var matches = this.hand.filter(
                 function (card) {
-                    return Object.keys(guess).map(function(k) {return guess[k];}).includes(card);
+                    return clue.hash_values(guess).includes(card);
                 });
         if (matches.length > 0) {
             return {
@@ -290,7 +303,9 @@ clue.Player = {
         });
     },
     record_evidence: function(suggester, guess, disputer, card) {
-        // console.log(this.name + " -- " + suggester.name + " guessed: " + Object.keys(guess).map(function(k) {return guess[k];}));
+        // console.log(this.name + " -- " + suggester.name + " guessed: " + clue.hash_values(guess));
+        var self = this;
+        this.all_guesses.push([suggester, guess, disputer, card]);
         if (card && this != disputer) {
             this.record[card] = disputer;
         }
@@ -302,6 +317,58 @@ clue.Player = {
                 if (!this.hand.includes(card)) {
                     this.record[guess[field]] = this.MARK_INDISPUTABLE_CARD;
                     this.accusation[field] = guess[field];
+                }
+            }
+        }
+        // The following logic implements the reasoning that if you see
+        // a guess go by, and you see someone dispute it, if you happen
+        // to know that two of the cards in the guess are not held by
+        // the disputer, you can then deduce that the third card of the
+        // guess must be held by the disputer
+        //
+        // This logic can be run on any of the guesses that you've seen
+        // so far at any time.
+        var any_changes = true;
+        // this loop should really just be "while (any_changes)" but
+        // to be paranoid, we cap it at 100 iterations to guard against
+        // a possible logic error that would otherwise result in an
+        // infinite loop.
+        for (var jj = 0; any_changes && jj < 100; jj++) {
+            any_changes = false;
+            for (var ii = 0; ii < this.all_guesses.length; ii++) {
+                if (this.all_guesses[ii][3]) {
+                    continue;
+                }
+                var disputer = this.all_guesses[ii][2];
+                if (!disputer) {
+                    continue;
+                }
+                var guess = this.all_guesses[ii][1];
+                var known = [];
+                var unknown = [];
+                clue.hash_values(guess).forEach(function(card) {
+                    if (card in self.record && self.record[card] != disputer) {
+                        known.push(card);
+                    } else {
+                        unknown.push(card);
+                    }
+                });
+                if (unknown.length == 1) {
+                    if (unknown[0] in this.record && this.record[unknown[0]]) {
+                        if (this.record[unknown[0]] != disputer) {
+                            // console.log(this.name + " would have deduced that " +
+                            //         disputer.name + " has " + unknown[0] +
+                            //         " based on guess " + clue.hash_values(guess) +
+                            //         ", but somehow we already think that " +
+                            //         this.record[unknown[0]] + " has it");
+                        }
+                    } else {
+                        this.record[unknown[0]] = disputer;
+                        // console.log(this.name + " deduced that " + disputer.name +
+                        //         " has " + unknown[0] +
+                        //         " based on guess " + clue.hash_values(guess));
+                        any_changes = true;
+                    }
                 }
             }
         }
@@ -403,7 +470,7 @@ clue.ConsolePlayer = clue.Player.extend({
         return {suspect: suspect, weapon: weapon, room: room};
     },
     record_accusation: function(accuser, accusation, result) {
-        this.display_output(accuser.name + " accused: " + Object.keys(accusation).map(function(k) {return accusation[k];}));
+        this.display_output(accuser.name + " accused: " + clue.hash_values(accusation));
         if (result) {
             this.display_output("That's right!");
             return true;
@@ -421,7 +488,7 @@ clue.ConsolePlayer = clue.Player.extend({
         var round = this.game.round;
         this.display_output("Round " + round + ": " +
                 suggester.name + " guessed: " +
-                Object.keys(guess).map(function(k) {return guess[k];}));
+                clue.hash_values(guess));
         if (!disputer) {
             this.display_output("No one could dispute that guess");
         } else if (!card) {
@@ -446,33 +513,20 @@ clue.HtmlPlayer = clue.ConsolePlayer.extend({
             room: clue.html.get_select_value("rooms"),
         };
     },
+    record_evidence: function(suggester, guess, disputer, card) {
+        clue.ConsolePlayer.record_evidence.call(this, suggester, guess, disputer, card);
+        clue.html.update_auto_notes(this.game, this.record);
+    },
     display_output: function(msg) {
         clue.html.log_output(msg + "\n");
     },
 });
 
 clue.html = {
-    setup: function(game) {
-        var notes = document.getElementById("notes");
-        var existing = document.getElementById("note-table");
-        if (existing) {
-            notes.removeChild(existing);
-        }
+    make_notes: function(game, parent_element, id, read_only, record) {
         var table = document.createElement("TABLE");
-        notes.appendChild(table);
-        table.setAttribute("id", "note-table");
-        var suspects  = document.getElementById("suspects");
-        for (var ii = 0; ii < game.suspects.length; ii++) {
-            suspects.add(new Option(game.suspects[ii]));
-        }
-        var weapons  = document.getElementById("weapons");
-        for (var ii = 0; ii < game.weapons.length; ii++) {
-            weapons.add(new Option(game.weapons[ii]));
-        }
-        var rooms  = document.getElementById("rooms");
-        for (var ii = 0; ii < game.rooms.length; ii++) {
-            rooms.add(new Option(game.rooms[ii]));
-        }
+        parent_element.appendChild(table);
+        table.setAttribute("id", id);
         for (var ii = 0;
                 ii < game.suspects.length || ii < game.weapons.length || ii < game.rooms.length;
                 ii++) {
@@ -512,6 +566,17 @@ clue.html = {
                         //td.appendChild(document.createTextNode(num));
                         td.appendChild(radio);
                         radio.setAttribute("type", "checkbox");
+                        if (read_only) {
+                            radio.setAttribute("disabled", "true");
+                        }
+                        if (record && text in record) {
+                            if (num < game.nplayers && record[text] == game.players[num]) {
+                                radio.setAttribute("checked", "true");
+                            }
+                            if (num == game.nplayers && record[text] == game.players[0].MARK_INDISPUTABLE_CARD) {
+                                radio.setAttribute("checked", "true");
+                            }
+                        }
                     }
                 }
             }
@@ -519,6 +584,30 @@ clue.html = {
             add_elt(weapon);
             add_elt(room);
         }
+    },
+    setup: function(game) {
+        // add cards to the drop down menus
+        var suspects  = document.getElementById("suspects");
+        for (var ii = 0; ii < game.suspects.length; ii++) {
+            suspects.add(new Option(game.suspects[ii]));
+        }
+        var weapons  = document.getElementById("weapons");
+        for (var ii = 0; ii < game.weapons.length; ii++) {
+            weapons.add(new Option(game.weapons[ii]));
+        }
+        var rooms  = document.getElementById("rooms");
+        for (var ii = 0; ii < game.rooms.length; ii++) {
+            rooms.add(new Option(game.rooms[ii]));
+        }
+        var notes = document.getElementById("notes");
+        var existing = document.getElementById("note-table");
+        if (existing) {
+            notes.removeChild(existing);
+        }
+        // populate the record keeping tables
+        clue.html.make_notes(game, notes, "note-table");
+        clue.html.update_auto_notes(game);
+        // resize the output windows
         var hand = document.getElementById("hand");
         hand.style.height = "50";
         hand.style.width = "100%";
@@ -526,6 +615,14 @@ clue.html = {
         log.style.height = "200";
         log.style.width = "100%";
         this.set_value("log", "");
+    },
+    update_auto_notes: function(game, record) {
+        var auto_notes = document.getElementById("auto_notes");
+        var existing = document.getElementById("auto_notes-table");
+        if (existing) {
+            auto_notes.removeChild(existing);
+        }
+        clue.html.make_notes(game, auto_notes, "auto_notes-table", true, record);
     },
     get_select_value: function(id) {
         var select = document.getElementById(id);
@@ -569,11 +666,9 @@ clue.play_round = function(game, start_num) {
             var evidence = other_player.check_guess(guess);
             if (evidence) {
                 found = true;
-                player.record_evidence(player, guess, other_player, evidence.card);
-                for (var kk = 1; kk < game.nplayers; kk++) {
-                    var third_player_num = (player_num + kk) % game.nplayers;
-                    var third_player = game.players[third_player_num];
-                    if (third_player_num == other_player_num) {
+                for (var kk = 0; kk < game.nplayers; kk++) {
+                    var third_player = game.players[kk];
+                    if (kk == other_player_num || kk == player_num) {
                         third_player.record_evidence(player, guess, other_player, evidence.card);
                     } else {
                         third_player.record_evidence(player, guess, other_player);
