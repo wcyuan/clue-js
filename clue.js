@@ -371,11 +371,14 @@ clue.Player = {
                     }
                 }
             }
+			if (this.check_records()) {
+				any_changes = true;
+			}
         }
-        this.check_records();
     },
     check_records: function() {
         var self = this;
+		var has_changes = false;
         var categories = [["suspect", "suspects"], ["weapon", "weapons"], ["room", "rooms"]];
         for (var ii = 0; ii < categories.length; ii++) {
             var field = categories[ii][0];
@@ -389,11 +392,14 @@ clue.Player = {
                 var poss = this.filter_seen(this.game[plural]); 
                 if (poss.length == 1) {
                     this.accusation[field] = poss[0];
+					this.record[poss[0]] = self.MARK_INDISPUTABLE_CARD;
+					has_changes = true;
                 } else {
                     delete this.accusation[field];
                 }
             }
         }
+		return has_changes;
     },
     make_accusation: function() {
         if ("suspect" in this.accusation &&
