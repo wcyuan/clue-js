@@ -342,8 +342,9 @@ clue.Record = {
     set_card: function(card, player_num, stat, skip_deduction) {
         var self = this;
         if (player_num === undefined) {
+            throw "Internal Error: undefined player_num";
             self.player_nums.forEach(function(player_num) {
-                self.data[card][player_num] = null;
+                //self.data[card][player_num] = null;
             });
             return;
         }
@@ -375,6 +376,7 @@ clue.Record = {
     // of the other players have the card
     set_other_players_false: function(card, player_num) {
         var self = this;
+        // console.log("set other players false: " + card + ", " + player_num);
         this.player_nums.forEach(function(this_player_num) {
             if (this_player_num != player_num) {
                 // use set_card because this might have told
@@ -398,6 +400,7 @@ clue.Record = {
     // none of the other cards in this category is the answer
     set_rest_of_category_false: function(card) {
         var self = this;
+        // console.log("set rest of category false " + card);
         var category = self.get_card_category(card);
         self.game.cards[category].forEach(function(this_card) {
             if (card != this_card) {
@@ -431,11 +434,11 @@ clue.Record = {
     check_one_player_left: function(card) {
         var self = this;
         var types = self.count_types(card);
-        if (types[2].length == 1 && types[1].length == 0) {
+        if (types[2].length == 1 && types[0].length == 0) {
             // use set_card because if we are setting the ANSWER_PLAYER
             // to true, then we have to set the rest of the category
             // to false for the ANSWER_PLAYER.
-            self.set_card(card, types[1][0], true);
+            self.set_card(card, types[2][0], true);
         }
         return self;
     },
@@ -553,6 +556,17 @@ clue.Record = {
         // console.log(this.name + " -- " + suggester.name + " guessed: " + clue.hash_values(guess));
         var self = this;
         self.all_guesses.push([suggester, guess, disputer, card]);
+        // all players between the suggester and disputer do not have
+        // the cards that were guessed
+        for (var ii = 1; ii < self.game.nplayers; ii++) {
+           var num = (suggester.num + ii) % self.game.nplayers; 
+           if (disputer && num == disputer.num) {
+               break;
+           }
+           clue.hash_values(guess).forEach(function(card) {
+               self.set_card(card, num, false);
+           });
+        }
         // if we saw the card, then we now know who has that
         // card, so mark it down.
         if (card && self.player.num != disputer.num) {
