@@ -348,6 +348,9 @@ clue.Record = {
             });
             return;
         }
+        if (!self.player_nums.includes(player_num)) {
+            throw "Invalid player num: " + player_num;
+        }
         if (stat === undefined) {
             stat = true;
         }
@@ -487,6 +490,9 @@ clue.Record = {
                 return self.data[card][this_player_num];
             }), "Internal error: Too many players have card " + card);
         } else {
+            if (!self.player_nums.includes(player_num)) {
+                throw "Invalid player num: " + player_num;
+            }
             return self.data[card][player_num];
         }
     },
