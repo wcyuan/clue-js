@@ -9,7 +9,7 @@
 // ---------------------------------------------------------- //
 if (typeof wd == "undefined") {
     var clue = {
-        DEFAULT_PLAYERS: ["User", "Player 1", "Player 2", "Player 3"],
+        DEFAULT_PLAYERS: ["User", "Player 2", "Player 3", "Player 4"],
         DEFAULT_CATEGORIES: ["suspect", "weapon", "room"],
         DEFAULT_CARDS: {
             "suspect" : [
@@ -612,15 +612,16 @@ clue.Record = {
                 var known = [];
                 var unknown = [];
                 clue.hash_values(guess).forEach(function(card) {
-                    if (self.get_card(card, disputer) === false) {
+                    if (self.get_card(card, disputer.num) === false) {
                         known.push(card);
                     } else {
                         unknown.push(card);
                     }
                 });
                 if (unknown.length == 1) {
-                    if (!self.get_card(unknown[0], disputer)) {
-                        self.set_card(unknown[0], disputer, true);
+                    if (!self.get_card(unknown[0], disputer.num)) {
+                        // console.log(self.player.name + " disputer " + disputer.name + " has card " + unknown[0]);
+                        self.set_card(unknown[0], disputer.num, true);
                         any_changes = true;
                     }
                 }
