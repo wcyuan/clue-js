@@ -244,6 +244,7 @@ clue.Game = {
     create: function(args) {
         var self = Object.create(this);
         self.player_names = clue.getarg(args, "players", clue.DEFAULT_PLAYERS);
+        self.player_constructors = clue.getarg(args, "player_constructors", clue.DEFAULT_PLAYER_CONSTRUCTORS);
         self.nplayers = self.player_names.length;
         self.categories = clue.getarg(args, "categories", clue.DEFAULT_CATEGORIES);
         self.should_deal = clue.getarg(args, "should_deal", true);
@@ -261,12 +262,14 @@ clue.Game = {
             var answer_hands = clue.deal(self);
             self.answer = answer_hands[0];
             self._hands = answer_hands[1];
-            self._set_players();
         } else {
             self.answer = [];
             self._hands = [];
-            self.players = [];
+	    for (var ii = 0; ii < self.nplayers; ii++) {
+		self._hands[ii] = [];
+	    }
         }
+    	self._set_players();
         self.round = 0;
         return self;
     },
@@ -275,13 +278,24 @@ clue.Game = {
         self.players = [];
         for (var ii = 0; ii < self._hands.length; ii++) {
             var constructor = clue.ComputerPlayer2;
-            if (ii == 0) {
+	    if (ii < self.player_constructors.length) {
+	        constructor = self.player_constructors[ii];
+	    } else if (ii == 0) {
                 constructor = clue.HtmlPlayer;
-            } else if (clue.randint(1, 2) == 1) {
+            } else if (clue.randint(1, 3) == 1) {
                 constructor = clue.ComputerPlayer3;
             }
             self.players[ii] = constructor.create(self, ii, self._hands[ii], self.player_names[ii]);
         }
+    },
+    find_player_by_name: function(name) {
+        var self = this;
+        for (var ii = 0; ii < self.players.length; ii++) {
+	    if (self.players[ii].name == name) {
+                return self.players[ii]
+	    }
+	}
+	return null;
     },
     hand_string: function(hand) {
         var self = this;
@@ -513,6 +527,9 @@ clue.Record = {
     // card is known to be
     get_card: function(card, player_num) {
         var self = this;
+	if (!(card in self.data)) {
+	    return null;
+	}
         if (player_num === undefined) {
             return clue.expect_one(self.player_nums.filter(function(this_player_num) {
                 return self.data[card][this_player_num];
@@ -575,16 +592,24 @@ clue.Record = {
         var self = this;
         return self;
     },
-    filter_seen: function(arr) {
+    // filter_cards_seen: given an array of cards, return the cards
+    // for which we don't know who has it.
+    filter_cards_seen: function(cards) {
         var self = this;
-        return arr.filter(function(card) {
-            if (card in self.data) {
-                if (self.get_card(card) != self.ANSWER_PLAYER) {
-                    return false;
-                }
-            }
-            return true;
+        return cards.filter(function(card) {
+	    return self.get_card(card) === null;
         });
+    },
+    // filter_cards_seen: given a category, 
+    // if we know what the answer is for that category,
+    // return the empty array.  otherwise, return the cards
+    // for which we don't know who has it.
+    filter_category_seen: function(category) {
+        var self = this;
+	if (self.get_answer(category) != null) {
+	    return [];
+	}
+	return self.filter_cards_seen(self.game.cards[category]);
     },
     record_evidence: function(suggester, guess, disputer, card) {
         // console.log(this.name + " -- " + suggester.name + " guessed: " + clue.hash_values(guess));
@@ -704,8 +729,8 @@ clue.Player = {
     },
     record_accusation: function(accuser, accusation, result) {
     },
-    filter_seen: function(arr) {
-        return this.record.filter_seen(arr);
+    filter_category_seen: function(category) {
+        return this.record.filter_category_seen(category);
     },
     record_evidence: function(suggester, guess, disputer, card) {
         this.record.record_evidence(suggester, guess, disputer, card);
@@ -730,7 +755,7 @@ clue.ComputerPlayer2 = clue.Player.extend({
         var self = this;
         var guess = {};
         self.game.categories.forEach(function(category) {
-            guess[category] = this.choose_or_sub(this.filter_seen(this.game.cards[category]), this.game.cards[category])
+            guess[category] = self.choose_or_sub(self.filter_category_seen(category), self.game.cards[category])
         });
         return guess;
     },
@@ -743,7 +768,7 @@ clue.ComputerPlayer2 = clue.Player.extend({
         // we know where all the cards for this category are.
         // So now which do we return?
         // first, return a random card in our hand
-        var inhand = this.hand.filter(function(card) { return fallback.includes(card); });
+        var inhand = self.hand.filter(function(card) { return fallback.includes(card); });
         if (inhand.length > 0) {
             return clue.choose(inhand);
         }
@@ -775,6 +800,21 @@ clue.ComputerPlayer3 = clue.ComputerPlayer2.extend({
             guess[category] = clue.choose(self.game.cards[category]);
         });
         return guess;
+    },
+});
+
+// ComputerPlayer4 randomly resolves to either ComputerPlayer2 or ComputerPlayer3
+// on creation
+clue.ComputerPlayer4 = clue.ComputerPlayer3.extend({
+    create: function(game, num, hand, name) {
+	return clue.choose([clue.ComputerPlayer2, clue.ComputerPlayer3]).create.call(this, game, num, hand, name);
+    },
+});
+
+clue.ComputerPlayer5 = clue.ComputerPlayer3.extend({
+    // On each turn, this player either guesses strategically like Player2 or guesses randomly like Player3
+    get_guess: function() {
+	return clue.choose([clue.ComputerPlayer2, clue.ComputerPlayer3]).get_guess.call(this);
     },
 });
 
@@ -848,6 +888,8 @@ clue.HtmlPlayer = clue.ConsolePlayer.extend({
         clue.html.log_output(msg + "\n");
     },
 });
+
+clue.DEFAULT_PLAYER_CONSTRUCTORS = [clue.HtmlPlayer, clue.ComputerPlayer4];
 
 clue.html = {
     make_notes: function(game, parent_element, id, read_only, record) {
