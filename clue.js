@@ -45,16 +45,16 @@ if (typeof wd == "undefined") {
 
 // ---------------------------------------------------------- //
 
-clue.addEventListener = function(el, type, fn) { 
-    if (el.addEventListener) { 
-        el.addEventListener(type, fn, false); 
-        return true; 
-    } else if (el.attachEvent) { 
-        var r = el.attachEvent("on" + type, fn); 
-        return r; 
-    } else { 
-        return false; 
-    } 
+clue.addEventListener = function(el, type, fn) {
+    if (el.addEventListener) {
+        el.addEventListener(type, fn, false);
+        return true;
+    } else if (el.attachEvent) {
+        var r = el.attachEvent("on" + type, fn);
+        return r;
+    } else {
+        return false;
+    }
 };
 
 clue.set_toggle_display = function(button_id, div_id) {
@@ -239,6 +239,7 @@ clue.Game = {
         self.player_names = clue.getarg(args, "players", clue.DEFAULT_PLAYERS);
         self.nplayers = self.player_names.length;
         self.categories = clue.getarg(args, "categories", clue.DEFAULT_CATEGORIES);
+        self.should_deal = clue.getarg(args, "should_deal", true);
         self.cards = {};
         self.categories.forEach(function(category) {
             var def = [];
@@ -247,14 +248,20 @@ clue.Game = {
             }
             self.cards[category] = clue.getarg(args, category, def);
         });
-        var answer_hands = clue.deal(self);
-        self.answer = answer_hands[0];
-        self.hands = answer_hands[1];
-        self.set_players();
+        if (self.should_deal) {
+            var answer_hands = clue.deal(self);
+            self.answer = answer_hands[0];
+            self.hands = answer_hands[1];
+            self._set_players();
+        } else {
+            self.answer = [];
+            self.hands = [];
+            self.players = [];
+        }
         self.round = 0;
         return self;
     },
-    set_players: function() {
+    _set_players: function() {
         var self = this;
         self.players = [];
         for (var ii = 0; ii < self.hands.length; ii++) {
@@ -312,7 +319,7 @@ clue.Record = {
         }
         self.game.categories.forEach(function(category) {
             self.game.cards[category].forEach(function(card) {
-                self.data[card] = {}; 
+                self.data[card] = {};
                 // initialize all card for all players to "unknown"
                 self.player_nums.forEach(function(this_player) {
                     self.data[card][this_player] = null;
@@ -332,7 +339,7 @@ clue.Record = {
         return self;
     },
     // set_card
-    // 
+    //
     // This sets the record for a given card and player to the given status.
     // If the status is true, that means that the player has that card.
     // If the status is false, that means that the player does not have that card.
@@ -369,7 +376,7 @@ clue.Record = {
         var old_stat = self.data[card][player_num];
         if (old_stat !== null && old_stat != stat) {
             console.log("Changing card " + card + " player " + player_num +
-                    " from " + old_stat + " to " + stat); 
+                    " from " + old_stat + " to " + stat);
         }
         self.data[card][player_num] = stat;
         if (!skip_deduction) {
@@ -469,7 +476,7 @@ clue.Record = {
         self.game.cards[category].forEach(function(card) {
             if (self.data[card][self.ANSWER_PLAYER] === null) {
                 unknowns.push(card);
-            } else if (self.data[card][self.ANSWER_PLAYER]) { 
+            } else if (self.data[card][self.ANSWER_PLAYER]) {
                 trues.push(card);
             } else {
                 falses.push(card);
@@ -494,7 +501,7 @@ clue.Record = {
     // the id of the player that has the card, or -1 if the
     // card is known to be part of the answer.  if no player
     // is known to have the card, we'll return null.  if the
-    // card is known to be 
+    // card is known to be
     get_card: function(card, player_num) {
         var self = this;
         if (player_num === undefined) {
@@ -534,11 +541,11 @@ clue.Record = {
         } else {
             return clue.expect_one(self.game.cards[category].filter(function(card) {
                 return self.data[card][self.ANSWER_PLAYER];
-            }), "Internal error: Too many answers for category " + category); 
+            }), "Internal error: Too many answers for category " + category);
         }
     },
     // make_deductions
-    // 
+    //
     // This function draws conclusions from the evidence seen.
     //
     // 1. If, for a given card, all players but one (including
@@ -577,7 +584,7 @@ clue.Record = {
         // all players between the suggester and disputer do not have
         // the cards that were guessed
         for (var ii = 1; ii < self.game.nplayers; ii++) {
-           var num = (suggester.num + ii) % self.game.nplayers; 
+           var num = (suggester.num + ii) % self.game.nplayers;
            if (disputer && num == disputer.num) {
                break;
            }
@@ -698,7 +705,7 @@ clue.Player = {
 
 clue.ComputerPlayer1 = clue.Player.extend({
     // this player always guesses the same thing
-    get_guess: function() { 
+    get_guess: function() {
         var self = this;
         var guess = {};
         self.game.categories.forEach(function(category) {
@@ -752,7 +759,7 @@ clue.ComputerPlayer2 = clue.Player.extend({
 
 clue.ComputerPlayer3 = clue.ComputerPlayer2.extend({
     // this player always guesses something random
-    get_guess: function() { 
+    get_guess: function() {
         var self = this;
         var guess = {};
         self.game.categories.forEach(function(category) {
@@ -816,7 +823,7 @@ clue.HtmlPlayer = clue.ConsolePlayer.extend({
         clue.html.display_hand(hand, game);
         return self;
     },
-    get_guess: function() { 
+    get_guess: function() {
         var self = this;
         var guess = {};
         self.game.categories.forEach(function(category) {
@@ -950,7 +957,7 @@ clue.html = {
         elt.innerHTML = text;
     },
     display_hand: function(hand, game) {
-        this.set_value("hand", game.hand_string(hand)); 
+        this.set_value("hand", game.hand_string(hand));
     },
     log_output: function(msg) {
         this.add_value("log", msg);
@@ -964,8 +971,8 @@ clue.play_round = function(game, start_num) {
         start_num = 0;
     }
     game.round += 1;
-    for (var ii = 0; ii < game.nplayers; ii++) {
-        var player_num = (start_num + ii) % game.nplayers;
+    for (var ii = 0; ii < game.players.length; ii++) {
+        var player_num = (start_num + ii) % game.players.length;
         var player = game.players[player_num];
         // console.log("starting player " + player.name);
         var guess = player.get_guess();
@@ -973,13 +980,13 @@ clue.play_round = function(game, start_num) {
             return;
         }
         var found = false;
-        for (var jj = 1; jj < game.nplayers; jj++) {
-            var other_player_num = (ii + jj) % game.nplayers;
+        for (var jj = 1; jj < game.players.length; jj++) {
+            var other_player_num = (ii + jj) % game.players.length;
             var other_player = game.players[other_player_num];
             var evidence = other_player.check_guess(guess);
             if (evidence) {
                 found = true;
-                for (var kk = 0; kk < game.nplayers; kk++) {
+                for (var kk = 0; kk < game.players.length; kk++) {
                     var third_player = game.players[kk];
                     if (kk == other_player_num || kk == player_num) {
                         third_player.record_evidence(player, guess, other_player, evidence.card);
@@ -991,7 +998,7 @@ clue.play_round = function(game, start_num) {
             }
         }
         if (!found) {
-            for (var jj = 0; jj < game.nplayers; jj++) {
+            for (var jj = 0; jj < game.players.length; jj++) {
                 game.players[jj].record_evidence(player, guess);
             }
         }
@@ -1006,7 +1013,7 @@ clue.allow_accusation = function(player, accusation) {
     var game = player.game;
     if (accusation) {
         var result = clue.object_equals(game.answer, accusation);
-        for (var jj = 0; jj < game.nplayers; jj++) {
+        for (var jj = 0; jj < game.players.length; jj++) {
             game.players[jj].record_accusation(player, accusation, result);
         }
     }
