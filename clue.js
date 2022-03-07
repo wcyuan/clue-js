@@ -260,11 +260,11 @@ clue.Game = {
         if (self.should_deal) {
             var answer_hands = clue.deal(self);
             self.answer = answer_hands[0];
-            self.hands = answer_hands[1];
+            self._hands = answer_hands[1];
             self._set_players();
         } else {
             self.answer = [];
-            self.hands = [];
+            self._hands = [];
             self.players = [];
         }
         self.round = 0;
@@ -273,14 +273,14 @@ clue.Game = {
     _set_players: function() {
         var self = this;
         self.players = [];
-        for (var ii = 0; ii < self.hands.length; ii++) {
+        for (var ii = 0; ii < self._hands.length; ii++) {
             var constructor = clue.ComputerPlayer2;
             if (ii == 0) {
                 constructor = clue.HtmlPlayer;
             } else if (clue.randint(1, 2) == 1) {
                 constructor = clue.ComputerPlayer3;
             }
-            self.players[ii] = constructor.create(self, ii, self.hands[ii], self.player_names[ii]);
+            self.players[ii] = constructor.create(self, ii, self._hands[ii], self.player_names[ii]);
         }
     },
     hand_string: function(hand) {
@@ -367,7 +367,7 @@ clue.Record = {
     //
     // If player and status are both unknown, that resets the status for that card to
     // unknown for all players.
-    set_card: function(card, player_num, stat, skip_deduction) {
+    _set_card: function(card, player_num, stat, skip_deduction) {
         var self = this;
         if (player_num === undefined) {
             throw "Internal Error: undefined player_num";
@@ -390,14 +390,14 @@ clue.Record = {
         self.data[card][player_num] = stat;
         if (!skip_deduction) {
             if (stat && !old_stat) {
-                self.set_other_players_false(card, player_num);
+                self._set_other_players_false(card, player_num);
                 if (player_num == self.ANSWER_PLAYER) {
-                    self.set_rest_of_category_false(card);
+                    self._set_rest_of_category_false(card);
                 }
             } else if (!stat) {
-                self.check_one_player_left(card);
+                self._check_one_player_left(card);
                 if (player_num == self.ANSWER_PLAYER) {
-                    self.check_one_card_left_in_category(card);
+                    self._check_one_card_left_in_category(card);
                 }
             }
         }
@@ -405,7 +405,7 @@ clue.Record = {
     },
     // once we know that player_num has the card, we know that none
     // of the other players have the card
-    set_other_players_false: function(card, player_num) {
+    _set_other_players_false: function(card, player_num) {
         var self = this;
         // console.log("set other players false: " + card + ", " + player_num);
         this.player_nums.forEach(function(this_player_num) {
@@ -415,13 +415,13 @@ clue.Record = {
                 // card, and that might be enough for us to
                 // know which card the ANSWER_PLAYER does have
                 // for this category
-                self.set_card(card, this_player_num, false);
+                self._set_card(card, this_player_num, false);
             }
         });
         return self;
     },
     // get the category for a card
-    get_card_category: function(card) {
+    _get_card_category: function(card) {
         var self = this;
         return clue.expect_one(self.game.categories.filter(function(category) {
             return self.game.cards[category].includes(card);
@@ -429,22 +429,22 @@ clue.Record = {
     },
     // if we know that this card is the answer, then we know
     // none of the other cards in this category is the answer
-    set_rest_of_category_false: function(card) {
+    _set_rest_of_category_false: function(card) {
         var self = this;
         // console.log("set rest of category false " + card);
-        var category = self.get_card_category(card);
+        var category = self._get_card_category(card);
         self.game.cards[category].forEach(function(this_card) {
             if (card != this_card) {
                 // call set_card because there might be only
                 // one other player who has this card
-                self.set_card(this_card, self.ANSWER_PLAYER, false);
+                self._set_card(this_card, self.ANSWER_PLAYER, false);
             }
         });
     },
     // for a given card, return which players we know have it
     // which we know don't have it, and which we don't know the
     // status of.
-    count_types: function(card) {
+    _count_types: function(card) {
         var self = this;
         var unknowns = [];
         var trues = [];
@@ -462,23 +462,23 @@ clue.Record = {
     },
     // if we know that the card is not held by n-1 players,
     // then it must be held by the nth player.
-    check_one_player_left: function(card) {
+    _check_one_player_left: function(card) {
         var self = this;
-        var types = self.count_types(card);
+        var types = self._count_types(card);
         if (types[2].length == 1 && types[0].length == 0) {
             // use set_card because if we are setting the ANSWER_PLAYER
             // to true, then we have to set the rest of the category
             // to false for the ANSWER_PLAYER.
-            self.set_card(card, types[2][0], true);
+            self._set_card(card, types[2][0], true);
         }
         return self;
     },
     // if we know for all but one card in this category
     // that it's not the answer, then the last card in the
     // category must be the answer.
-    check_one_card_left_in_category: function(card) {
+    _check_one_card_left_in_category: function(card) {
         var self = this;
-        var category = self.get_card_category(card);
+        var category = self._get_card_category(card);
         var unknowns = [];
         var trues = [];
         var falses = [];
@@ -492,7 +492,7 @@ clue.Record = {
             }
         });
         if (unknowns.length == 1 && trues.length == 0) {
-            self.set_card(unknowns[0], self.ANSWER_PLAYER, true);
+            self._set_card(unknowns[0], self.ANSWER_PLAYER, true);
         }
         return self;
     },
@@ -571,7 +571,7 @@ clue.Record = {
     //
     // 4. If a card is known to be the answer, none of the other
     // cards in that category may be the answer.
-    make_deductions: function() {
+    _make_deductions: function() {
         var self = this;
         return self;
     },
@@ -598,13 +598,13 @@ clue.Record = {
                break;
            }
            clue.hash_values(guess).forEach(function(card) {
-               self.set_card(card, num, false);
+               self._set_card(card, num, false);
            });
         }
         // if we saw the card, then we now know who has that
         // card, so mark it down.
         if (card && self.player.num != disputer.num) {
-            self.set_card(card, disputer.num, true);
+            self._set_card(card, disputer.num, true);
         }
         // if we were the suggester, and there was no disputer,
         // then any card that we don't have in our hand must be
@@ -613,7 +613,7 @@ clue.Record = {
             self.game.categories.forEach(function(category) {
                 var card = guess[category];
                 if (!self.get_card(card, self.player.num)) {
-                    self.set_card(card, self.ANSWER_PLAYER, true);
+                    self._set_card(card, self.ANSWER_PLAYER, true);
                 }
             });
         }
@@ -655,7 +655,7 @@ clue.Record = {
                 if (unknown.length == 1) {
                     if (!self.get_card(unknown[0], disputer.num)) {
                         // console.log(self.player.name + " disputer " + disputer.name + " has card " + unknown[0]);
-                        self.set_card(unknown[0], disputer.num, true);
+                        self._set_card(unknown[0], disputer.num, true);
                         any_changes = true;
                     }
                 }
