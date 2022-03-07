@@ -1091,6 +1091,6 @@ clue.play_game = function(debug, nplayers, suspects, weapons, rooms) {
     }
 };
 
-clue.main();
+// clue.main();
 
 // ---------------------------------------------------------- //
