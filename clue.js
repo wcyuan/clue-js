@@ -129,7 +129,11 @@ clue.shuffle = function(array) {
     return array;
 };
 
+// Given an array, randomly choose one element of the array.
+// Returns the element chosen.
+//
 // If should_remove is true, this modifies the given array
+// and removes the chosen element from the array.
 clue.choose = function(array, should_remove) {
     var choice_idx = clue.randint(0, array.length);
     var choice = array[choice_idx];
@@ -154,16 +158,24 @@ clue.expect_one = function(matches, errmsg) {
     }
 };
 
+// Given a Game, returns
+//   answer: an array of cards, one per category
+//   hands: an array of hands, where each hand is an array of cards
 // Does not modify the given arrays
 clue.deal = function(game) {
     var all_cards = [];
     var answer = {};
     Object.keys(game.cards).forEach(function(category) {
+	// make a copy of the given array
         var cat_cards = game.cards[category].slice();
+	// pick one card to use as the answer, and remove it from the deck
         answer[category] = clue.choose(cat_cards, true);
+	// add the remaining cards to all_cards
         all_cards = all_cards.concat(cat_cards);
     });
+    // Shuffle the deck
     var deck = clue.shuffle(all_cards);
+    // Create hands
     var hands = [];
     for (var ii = 0; ii < game.nplayers; ii++) {
         hands[ii] = [];
