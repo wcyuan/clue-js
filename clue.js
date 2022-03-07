@@ -118,6 +118,13 @@ clue.randint = function(min, max) {
     return Math.floor(Math.random() * (max - min)) + min;
 };
 
+// this version of mod will always return a positive number
+// even if n is negative.
+// https://stackoverflow.com/questions/4467539/javascript-modulo-gives-a-negative-result-for-negative-numbers
+clue.mod = function(n, m) {
+    return ((n % m) + m) % m;
+};
+
 // Modifies the given array
 clue.shuffle = function(array) {
     for (var ii = 0; ii < array.length; ii++) {
@@ -240,6 +247,8 @@ clue.Game = {
         self.nplayers = self.player_names.length;
         self.categories = clue.getarg(args, "categories", clue.DEFAULT_CATEGORIES);
         self.should_deal = clue.getarg(args, "should_deal", true);
+        self.turn_direction = clue.getarg(args, "turn_direction", 1);
+        self.evidence_direction = clue.getarg(args, "evidence_direction", 1);
         self.cards = {};
         self.categories.forEach(function(category) {
             var def = [];
@@ -584,7 +593,7 @@ clue.Record = {
         // all players between the suggester and disputer do not have
         // the cards that were guessed
         for (var ii = 1; ii < self.game.nplayers; ii++) {
-           var num = (suggester.num + ii) % self.game.nplayers;
+           var num = clue.mod((suggester.num + (ii * self.game.evidence_direction)), self.game.nplayers);
            if (disputer && num == disputer.num) {
                break;
            }
@@ -972,7 +981,7 @@ clue.play_round = function(game, start_num) {
     }
     game.round += 1;
     for (var ii = 0; ii < game.players.length; ii++) {
-        var player_num = (start_num + ii) % game.players.length;
+        var player_num = clue.mod((start_num + (ii * game.turn_direction)), game.players.length);
         var player = game.players[player_num];
         // console.log("starting player " + player.name);
         var guess = player.get_guess();
@@ -981,7 +990,7 @@ clue.play_round = function(game, start_num) {
         }
         var found = false;
         for (var jj = 1; jj < game.players.length; jj++) {
-            var other_player_num = (ii + jj) % game.players.length;
+            var other_player_num = clue.mod((player_num + (jj * game.evidence_direction)), game.players.length);
             var other_player = game.players[other_player_num];
             var evidence = other_player.check_guess(guess);
             if (evidence) {
