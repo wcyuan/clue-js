@@ -1254,6 +1254,9 @@ clue.companion.html = {
         clue.companion.html.remove_children(player_div);
         var table = document.createElement("TABLE");
         player_div.appendChild(table);
+		var th = document.createElement("TH");
+		table.appendChild(th);
+		th.innerHTML = "Players";
         for (var ii = 0; ii < state.player_names.length; ii++) {
             var tr = document.createElement("TR");
             table.appendChild(tr);
