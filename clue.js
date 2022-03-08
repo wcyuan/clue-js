@@ -1100,6 +1100,223 @@ clue.play_game = function(debug, nplayers, suspects, weapons, rooms) {
     }
 };
 
-// clue.main();
-
 // ---------------------------------------------------------- //
+
+clue.companion = {};
+
+clue.companion.State = {
+    create: function(args) {
+        var self = Object.create(this);
+        self.player_names = clue.getarg(args, "players", clue.DEFAULT_PLAYERS);
+        self.player_cards = [];
+        self.records = [];
+        self.turn_direction = clue.getarg(args, "turn_direction", 1);
+        self.evidence_direction = clue.getarg(args, "evidence_direction", 1);
+        return self;
+    },
+    make_game: function() {
+        var self = this;
+        var game = clue.Game.create({
+            players: self.player_names,
+            player_constructors: [clue.Player],
+            should_deal: false,
+            turn_direction: self.turn_direction,
+            evidence_direction: self.evidence_direction,
+        });
+        if (self.player_names.length < 1) {
+            return game;
+        }
+        var record = game.players[0].record;
+        for (var ii = 0; ii < self.player_cards; ii++) {
+            record.set_player_card(
+                player_cards[ii][0],  // card (string)
+                player_cards[ii][1]); // player_name (string)
+        }
+        for (var ii = 0; ii < self.records; ii++) {
+            var suggester = game.find_player_by_name(self.records[ii][0]);
+            var disputer = game.find_player_by_name(self.records[ii][2]);
+            record.record_evidence(
+                suggester,
+                self.records[ii][1], // guess (array of cards)
+                disputer,
+                self.records[ii][3], // card (string)
+            );
+        }
+        return game;
+    },
+    // Read the url params and convert into an Object
+    _params_to_hash: function(pairs, map) {
+        if (!pairs) {
+            pairs = window.location.hash.substring(1).split("&");
+        }
+        if (!map) {
+            map = {};
+        }
+        var count = pairs.length;
+        for (var i = 0; i < count; i++) {
+            var pair = pairs[i];
+            var kv = pair.split('=', 2);
+            if (kv[0] && kv[1] !== undefined) {
+                map[kv[0]] = JSON.parse(decodeURIComponent(kv[1]));
+            }
+        }
+        return map;
+    },
+    // Take an Object and turn it into a url params string
+    _to_query_string: function(paramsAsMap) {
+        var query = "";
+        var obj = paramsAsMap;
+        for (var prop in obj) {
+            if (obj.hasOwnProperty(prop)) {
+                if (query.length > 0) {
+                    query = query + "&";
+                }
+                query = query + prop + "=" + encodeURIComponent(JSON.stringify(obj[prop]));
+            }
+        }
+        return query;
+    },
+    to_url_params: function(should_update) {
+        var self = this;
+        var params = {
+            player_names: self.player_names,
+            turn_direction: self.turn_direction,
+            evidence_direction: self.evidence_direction,
+            player_cards: self.player_cards,
+            records: self.records,
+        };
+        if (should_update) {
+            window.location.hash = self._to_query_string(params);
+        }
+        return params;
+    },
+    from_url_params: function(params) {
+        var self = this;
+        if (params === undefined) {
+            params = self._params_to_hash();
+        }
+        for (var varname in self) {
+            if (varname in params) {
+                self[varname] = params[varname];
+            }
+        }
+        return self;
+    },
+    add_player: function(name) {
+        console.log("add player " + name);
+        var self = this;
+        self.player_names.push(name);
+        self.to_url_params(true);
+        return self;
+    },
+    delete_player: function(ii) {
+        console.log("delete_player : " + ii);
+        var self = this;
+        self.player_names.splice(ii, 1);
+        // TODO: delete from player_cards and records?
+        self.to_url_params(true);
+        return self;
+    },
+    rename_player: function(ii, new_name) {
+        console.log("rename_player : " + ii + " " + new_name);
+        var self = this;
+        var old_name = self.player_names[ii];
+        self.player_names[ii] = new_name;
+        // TODO: update player_cards and records
+        self.to_url_params(true);
+        return self;
+    },
+};
+
+clue.companion.html = {
+    main: function() {
+        clue.companion.state = clue.companion.State.create();
+        clue.companion.state.from_url_params();
+        clue.companion.html.draw_all(clue.companion.state);
+    },
+    draw_all: function(state) {
+        clue.companion.html.draw_players(state);
+        clue.companion.html.draw_player_cards(state);
+        clue.companion.html.draw_records(state);
+        if (state.player_names.length > 0) {
+            var game = state.make_game();
+            clue.html.update_auto_notes(game, game.players[0].record);
+        }
+    },
+    remove_children: function(node) {
+        while (node.firstChild) {
+            node.removeChild(node.firstChild);
+        }
+    },
+    draw_players: function(state) {
+        var player_div = document.getElementById("players");
+        clue.companion.html.remove_children(player_div);
+        var table = document.createElement("TABLE");
+        player_div.appendChild(table);
+        for (var ii = 0; ii < state.player_names.length; ii++) {
+            var tr = document.createElement("TR");
+            table.appendChild(tr);
+            // Player Name
+            var td = document.createElement("TD");
+            tr.appendChild(td);
+            var label = document.createElement("INPUT");
+            td.appendChild(label);
+            label.setAttribute("value", state.player_names[ii]);
+            // Delete Button
+            td = document.createElement("TD");
+            tr.appendChild(td);
+            var delete_button = document.createElement("INPUT");
+            td.appendChild(delete_button);
+            delete_button.type = "button";
+            delete_button.value = "Delete";
+            clue.addEventListener(delete_button, "click", (function(ii, label) {
+                return function() {
+                    state.delete_player(ii, label.value);
+                    clue.companion.html.draw_all(state);
+                };
+            })(ii, label));
+            // Rename Button
+            td = document.createElement("TD");
+            tr.appendChild(td);
+            var rename_button = document.createElement("INPUT");
+            td.appendChild(rename_button);
+            rename_button.type = "button";
+            rename_button.value = "Rename";
+            clue.addEventListener(rename_button, "click", (function(ii, label) {
+                return function() {
+                    state.rename_player(ii, label.value);
+                    clue.companion.html.draw_all(state);
+                };
+            })(ii, label));
+        }
+        // Add player
+        var tr = document.createElement("TR");
+        table.appendChild(tr);
+        var td = document.createElement("TD");
+        tr.appendChild(td);
+        var label = document.createElement("INPUT");
+        td.appendChild(label);
+        label.setAttribute("value", "Player " + (state.player_names.length + 1));
+        td = document.createElement("TD");
+        tr.appendChild(td);
+        var add_button = document.createElement("INPUT");
+        td.appendChild(add_button);
+        add_button.type = "button";
+        add_button.value = "Add";
+        clue.addEventListener(add_button, "click", (function(label) {
+            return function() {
+                state.add_player(label.value);
+                clue.companion.html.draw_all(state);
+            };
+        })(label));
+    },
+    draw_player_cards: function(state) {
+        var player_cards_div = document.getElementById("player-cards");
+
+    },
+    draw_records(state) {
+        var records_div = document.getElementById("records");
+    },
+};
+
+
