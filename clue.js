@@ -1227,6 +1227,26 @@ clue.companion.State = {
         self.to_url_params(true);
         return self;
     },
+    toggle_turn_direction: function() {
+        var self = this;
+        if (self.turn_direction == 1) {
+            self.turn_direction = -1;
+        } else {
+            self.turn_direction = 1;
+        }
+        self.to_url_params(true);
+        return self;
+    },
+    toggle_evidence_direction: function() {
+        var self = this;
+        if (self.evidence_direction == 1) {
+            self.evidence_direction = -1;
+        } else {
+            self.evidence_direction = 1;
+        }
+        self.to_url_params(true);
+        return self;
+    },
 };
 
 clue.companion.html = {
@@ -1254,9 +1274,9 @@ clue.companion.html = {
         clue.companion.html.remove_children(player_div);
         var table = document.createElement("TABLE");
         player_div.appendChild(table);
-		var th = document.createElement("TH");
-		table.appendChild(th);
-		th.innerHTML = "Players";
+        var th = document.createElement("TH");
+        table.appendChild(th);
+        th.innerHTML = "Players";
         for (var ii = 0; ii < state.player_names.length; ii++) {
             var tr = document.createElement("TR");
             table.appendChild(tr);
@@ -1313,13 +1333,51 @@ clue.companion.html = {
                 clue.companion.html.draw_all(state);
             };
         })(label));
+        // Set turn and evidence direction
+        var tr = document.createElement("TR");
+        table.appendChild(tr);
+        var td = document.createElement("TD");
+        tr.appendChild(td);
+        var turn_direction_button = document.createElement("INPUT");
+        td.appendChild(turn_direction_button);
+        turn_direction_button.type = "button";
+        turn_direction_button.value = "Turns: " + (state.turn_direction == 1 ? "forward": "backward");
+        clue.addEventListener(turn_direction_button, "click", function() {
+            state.toggle_turn_direction();
+            clue.companion.html.draw_all(state);
+        });
+        var td = document.createElement("TD");
+        tr.appendChild(td);
+        var evidence_direction = document.createElement("INPUT");
+        td.appendChild(evidence_direction);
+        evidence_direction.type = "button";
+        evidence_direction.value = "Evidence: " + (state.evidence_direction == 1 ? "forward": "backward");
+        clue.addEventListener(evidence_direction, "click", function() {
+            state.toggle_evidence_direction();
+            clue.companion.html.draw_all(state);
+        });
     },
     draw_player_cards: function(state) {
         var player_cards_div = document.getElementById("player-cards");
-
+        clue.companion.html.remove_children(player_cards_div);
+        var table = document.createElement("TABLE");
+        player_cards_div.appendChild(table);
+        var th = document.createElement("TH");
+        table.appendChild(th);
+        th.innerHTML = "Cards";
+        for (var ii = 0; ii < state.player_cards.length; ii++) {
+        }
     },
     draw_records(state) {
         var records_div = document.getElementById("records");
+        clue.companion.html.remove_children(records_div);
+        var table = document.createElement("TABLE");
+        records_div.appendChild(table);
+        var th = document.createElement("TH");
+        table.appendChild(th);
+        th.innerHTML = "Records";
+        for (var ii = 0; ii < state.records.length; ii++) {
+        }
     },
 };
 
