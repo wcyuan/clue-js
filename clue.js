@@ -359,7 +359,7 @@ clue.Record = {
         });
         return self;
     },
-    // set_card
+    // _set_card
     //
     // This sets the record for a given card and player to the given status.
     // If the status is true, that means that the player has that card.
@@ -414,6 +414,14 @@ clue.Record = {
             }
         }
         return self;
+    },
+    // set_player_card is a version of _set_card for public use
+    set_player_card: function(card, player_name) {
+        var self = this;
+	var player = self.game.find_player_by_name(player_name);
+	if (player !== null) {
+  	    self._set_card(card, player.num, true, false);
+	}
     },
     // once we know that player_num has the card, we know that none
     // of the other players have the card
