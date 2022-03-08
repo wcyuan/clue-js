@@ -7,41 +7,39 @@
 //        - sometimes guesses cards it has
 //        - can deduce things from other players' guesses
 // ---------------------------------------------------------- //
-if (typeof wd == "undefined") {
-    var clue = {
-        DEFAULT_PLAYERS: ["User", "Player 2", "Player 3", "Player 4"],
-        DEFAULT_CATEGORIES: ["suspect", "weapon", "room"],
-        DEFAULT_CARDS: {
-            "suspect" : [
-                "Miss Scarlett",
-                "Professor Plum",
-                "Mrs. Peacock",
-                "Mr. Green",
-                "Colonel Mustard",
-                "Mrs. White",
-            ],
-            "weapon": [
-                "Candlestick",
-                "Knife",
-                "Lead Pipe",
-                "Revolver",
-                "Rope",
-                "Wrench",
-            ],
-            "room": [
-                "Kitchen",
-                "Ballroom",
-                "Conservatory",
-                "Dining Room",
-                "Billiard Room",
-                "Library",
-                "Lounge",
-                "Hall",
-                "Study",
-            ],
-        },
-    };
-}
+var clue = {
+	DEFAULT_PLAYERS: ["User", "Player 2", "Player 3", "Player 4"],
+	DEFAULT_CATEGORIES: ["suspect", "weapon", "room"],
+	DEFAULT_CARDS: {
+	    "suspect" : [
+		"Miss Scarlett",
+		"Professor Plum",
+		"Mrs. Peacock",
+		"Mr. Green",
+		"Colonel Mustard",
+		"Mrs. White",
+	    ],
+	    "weapon": [
+		"Candlestick",
+		"Knife",
+		"Lead Pipe",
+		"Revolver",
+		"Rope",
+		"Wrench",
+	    ],
+	    "room": [
+		"Kitchen",
+		"Ballroom",
+		"Conservatory",
+		"Dining Room",
+		"Billiard Room",
+		"Library",
+		"Lounge",
+		"Hall",
+		"Study",
+	    ],
+	},
+};
 
 // ---------------------------------------------------------- //
 
