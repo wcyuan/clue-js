@@ -7,6 +7,9 @@
 //        - sometimes guesses cards it has
 //        - can deduce things from other players' guesses
 // ---------------------------------------------------------- //
+
+"use strict";
+
 var clue = {
 	DEFAULT_PLAYERS: ["User", "Player 2", "Player 3", "Player 4"],
 	DEFAULT_CATEGORIES: ["suspect", "weapon", "room"],
