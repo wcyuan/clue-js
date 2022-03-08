@@ -1205,6 +1205,7 @@ clue.companion.State = {
     add_player: function(name) {
         console.log("add player " + name);
         var self = this;
+	// TODO: make sure we don't have two players with the same name
         self.player_names.push(name);
         self.to_url_params(true);
         return self;
@@ -1213,7 +1214,7 @@ clue.companion.State = {
         console.log("delete_player : " + ii);
         var self = this;
         self.player_names.splice(ii, 1);
-        // TODO: delete from player_cards and records?
+        // TODO: delete from player_cards and records
         self.to_url_params(true);
         return self;
     },
