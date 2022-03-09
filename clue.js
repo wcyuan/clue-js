@@ -1262,6 +1262,20 @@ clue.companion.State = {
         self.to_url_params(true);
         return self;
     },
+    remove_record: function(ii, record) {
+        console.log("remove_record : " + ii);
+        var self = this;
+        self.records.splice(ii, 1);
+        self.to_url_params(true);
+        return self;
+    },
+    add_record: function(suggester, guess, disputer, card) {
+        console.log("add_record : " + suggester + " " + guess + " " + disputer + " " + card);
+        var self = this;
+        self.records.push([suggester, guess, disputer, card]);
+        self.to_url_params(true);
+        return self;
+    },
 };
 
 clue.companion.html = {
@@ -1419,6 +1433,7 @@ clue.companion.html = {
         for (var ii = 0; ii < state.player_cards.length; ii++) {
             var tr = document.createElement("TR");
             table.appendChild(tr);
+            // Player
             var td = document.createElement("TD");
             tr.appendChild(td);
             var label = document.createElement("INPUT");
@@ -1426,6 +1441,7 @@ clue.companion.html = {
             label.setAttribute("readOnly", true);
             label.setAttribute("disabled", true);
             label.setAttribute("value", state.player_cards[ii][1]);
+            // Card
             td = document.createElement("TD");
             tr.appendChild(td);
             label = document.createElement("INPUT");
@@ -1504,15 +1520,11 @@ clue.companion.html = {
         th = document.createElement("TH");
         tr.appendChild(th);
         th.innerHTML = "Suggester";
-        th = document.createElement("TH");
-        tr.appendChild(th);
-        th.innerHTML = "Suspect";
-        th = document.createElement("TH");
-        tr.appendChild(th);
-        th.innerHTML = "Room";
-        th = document.createElement("TH");
-        tr.appendChild(th);
-        th.innerHTML = "Weapon";
+        for (var ii = 0; ii < game.categories.length; ii++) {
+            th = document.createElement("TH");
+            tr.appendChild(th);
+            th.innerHTML = game.categories[ii];
+        }
         th = document.createElement("TH");
         tr.appendChild(th);
         th.innerHTML = "Disputer";
@@ -1522,14 +1534,137 @@ clue.companion.html = {
         for (var ii = 0; ii < state.records.length; ii++) {
             var tr = document.createElement("TR");
             table.appendChild(tr);
+            // Suggester
             var td = document.createElement("TD");
             tr.appendChild(td);
+            var label = document.createElement("INPUT");
+            td.appendChild(label);
+            label.setAttribute("readOnly", true);
+            label.setAttribute("disabled", true);
+            label.setAttribute("value", state.records[ii][0]);
+            // Guess
+            for (var jj = 0; jj < game.categories.length; jj++) {
+                td = document.createElement("TD");
+                tr.appendChild(td);
+                label = document.createElement("INPUT");
+                td.appendChild(label);
+                label.setAttribute("readOnly", true);
+                label.setAttribute("disabled", true);
+                label.setAttribute("value", state.records[ii][1][game.categories[jj]]);
+            }
+            // Disputer
+            td = document.createElement("TD");
+            tr.appendChild(td);
+            label = document.createElement("INPUT");
+            td.appendChild(label);
+            label.setAttribute("readOnly", true);
+            label.setAttribute("disabled", true);
+            label.setAttribute("value", state.records[ii][2]);
+            // Card
+            td = document.createElement("TD");
+            tr.appendChild(td);
+            label = document.createElement("INPUT");
+            td.appendChild(label);
+            label.setAttribute("readOnly", true);
+            label.setAttribute("disabled", true);
+            label.setAttribute("value", state.records[ii][3]);
+            // Remove button
+            td = document.createElement("TD");
+            tr.appendChild(td);
+            var remove_button = document.createElement("INPUT");
+            td.appendChild(remove_button);
+            remove_button.setAttribute("type", "button");
+            remove_button.setAttribute("value", "Remove");
+            clue.addEventListener(remove_button, "click", (function(ii, state) {
+                return function() {
+                    state.remove_record(ii, state.records[ii]);
+                    clue.companion.html.draw_all(state);
+                };
+            })(ii, state));
         }
         // Add Record
         tr = document.createElement("TR");
         table.appendChild(tr);
+        // Suggester
         td = document.createElement("TD");
         tr.appendChild(td);
+        var suggester_select = document.createElement("select");
+        td.appendChild(suggester_select);
+        for (var ii = 0; ii < state.player_names.length; ii++) {
+            var option = document.createElement("option");
+            suggester_select.appendChild(option);
+            option.setAttribute("value", state.player_names[ii]);
+            option.innerHTML = state.player_names[ii];
+        }
+        // Guess
+        var guess_selects = [];
+        for (var ii = 0; ii < game.categories.length; ii++) {
+            td = document.createElement("TD");
+            tr.appendChild(td);
+            var guess_select = document.createElement("select");
+            td.appendChild(guess_select);
+            guess_selects.push(guess_select);
+            for (var jj = 0; jj < game.cards[game.categories[ii]].length; jj++) {
+                var option = document.createElement("option");
+                guess_select.appendChild(option);
+                option.setAttribute("value", game.cards[game.categories[ii]][jj]);
+                option.innerHTML = game.cards[game.categories[ii]][jj];
+            }
+        }
+        // Disputer
+        td = document.createElement("TD");
+        tr.appendChild(td);
+        var disputer_select = document.createElement("select");
+        td.appendChild(disputer_select);
+        for (var ii = 0; ii < state.player_names.length; ii++) {
+            var option = document.createElement("option");
+            disputer_select.appendChild(option);
+            option.setAttribute("value", state.player_names[ii]);
+            option.innerHTML = state.player_names[ii];
+        }
+        // Card
+        td = document.createElement("TD");
+        tr.appendChild(td);
+        var card_select = document.createElement("select");
+        td.appendChild(card_select);
+        var option = document.createElement("option");
+        card_select.appendChild(option);
+        option.setAttribute("value", "");
+        option.innerHTML = "";
+        for (var ii = 0; ii < game.categories.length; ii++) {
+            for (var jj = 0; jj < game.cards[game.categories[ii]].length; jj++) {
+                var option = document.createElement("option");
+                card_select.appendChild(option);
+                option.setAttribute("value", game.cards[game.categories[ii]][jj]);
+                option.innerHTML = game.cards[game.categories[ii]][jj];
+            }
+        }
+        // add button
+        td = document.createElement("TD");
+        tr.appendChild(td);
+        var add_button = document.createElement("INPUT");
+        td.appendChild(add_button);
+        add_button.setAttribute("type", "button");
+        add_button.setAttribute("value", "Add");
+        clue.addEventListener(add_button, "click", (function(state, game, suggester_select, guess_selects, disputer_select, card_select) {
+            return function() {
+                var guess = {};
+                for (var ii = 0; ii < game.categories.length; ii++) {
+                    guess[game.categories[ii]] = guess_selects[ii].value;
+                }
+                var card;
+                // If card_select.value is the empty string, translate that into undefined
+                if (card_select.value != "") {
+                    card = card_select.value;
+                }
+                state.add_record(
+                    suggester_select.value,
+                    guess,
+                    disputer_select.value,
+                    card);
+                clue.companion.html.draw_all(state);
+            };
+        })(state, game, suggester_select, guess_selects, disputer_select, card_select));
     },
 };
 
