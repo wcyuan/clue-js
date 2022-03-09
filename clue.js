@@ -1247,6 +1247,20 @@ clue.companion.State = {
         self.to_url_params(true);
         return self;
     },
+    remove_player_card: function(ii, player_card) {
+        console.log("remove_player_card : " + ii);
+        var self = this;
+        self.player_cards.splice(ii, 1);
+        self.to_url_params(true);
+        return self;
+    },
+    add_player_card: function(player, card) {
+        console.log("add_player_card : " + player + " " + card);
+        var self = this;
+        self.player_cards.push([card, player]);
+        self.to_url_params(true);
+        return self;
+    },
 };
 
 clue.companion.html = {
@@ -1257,10 +1271,10 @@ clue.companion.html = {
     },
     draw_all: function(state) {
         clue.companion.html.draw_players(state);
-        clue.companion.html.draw_player_cards(state);
-        clue.companion.html.draw_records(state);
+        var game = state.make_game();
+        clue.companion.html.draw_player_cards(state, game);
+        clue.companion.html.draw_records(state, game);
         if (state.player_names.length > 0) {
-            var game = state.make_game();
             clue.html.update_auto_notes(game, game.players[0].record);
         }
     },
@@ -1274,8 +1288,10 @@ clue.companion.html = {
         clue.companion.html.remove_children(player_div);
         var table = document.createElement("TABLE");
         player_div.appendChild(table);
+        var tr = document.createElement("TR");
+        table.appendChild(tr);
         var th = document.createElement("TH");
-        table.appendChild(th);
+        tr.appendChild(th);
         th.innerHTML = "Players";
         for (var ii = 0; ii < state.player_names.length; ii++) {
             var tr = document.createElement("TR");
@@ -1357,27 +1373,112 @@ clue.companion.html = {
             clue.companion.html.draw_all(state);
         });
     },
-    draw_player_cards: function(state) {
+    draw_player_cards: function(state, game) {
         var player_cards_div = document.getElementById("player-cards");
         clue.companion.html.remove_children(player_cards_div);
         var table = document.createElement("TABLE");
         player_cards_div.appendChild(table);
+        // Header 1
+        var tr = document.createElement("TR");
+        table.appendChild(tr);
         var th = document.createElement("TH");
-        table.appendChild(th);
+        tr.appendChild(th);
         th.innerHTML = "Cards";
+        // Header 2
+        tr = document.createElement("TR");
+        table.appendChild(tr);
+        th = document.createElement("TH");
+        tr.appendChild(th);
+        th.innerHTML = "Player";
+        th = document.createElement("TH");
+        tr.appendChild(th);
+        th.innerHTML = "Card";
         for (var ii = 0; ii < state.player_cards.length; ii++) {
+            var tr = document.createElement("TR");
+            table.appendChild(tr);
+            var td = document.createElement("TD");
+            tr.appendChild(td);
+            var label = document.createElement("INPUT");
+            td.appendChild(label);
+            label.setAttribute("readOnly", true);
+            label.setAttribute("disabled", true);
+            label.setAttribute("value", state.player_cards[ii][1]);
+            td = document.createElement("TD");
+            tr.appendChild(td);
+            label = document.createElement("INPUT");
+            td.appendChild(label);
+            label.setAttribute("readOnly", true);
+            label.setAttribute("disabled", true);
+            label.setAttribute("value", state.player_cards[ii][0]);
+            // Remove button
+            td = document.createElement("TD");
+            tr.appendChild(td);
+            var remove_button = document.createElement("INPUT");
+            td.appendChild(remove_button);
+            remove_button.setAttribute("type", "button");
+            remove_button.setAttribute("value", "Remove");
+            clue.addEventListener(remove_button, "click", (function(ii, state) {
+                return function() {
+                    state.remove_player_card(ii, state.player_cards[ii]);
+                    clue.companion.html.draw_all(state);
+                };
+            })(ii, state));
         }
+        // Add player-card
+        tr = document.createElement("TR");
+        table.appendChild(tr);
+        // player
+        td = document.createElement("TD");
+        tr.appendChild(td);
+        // card
+        td = document.createElement("TD");
+        tr.appendChild(td);
+        // add button
+        td = document.createElement("TD");
+        tr.appendChild(td);
     },
-    draw_records(state) {
+    draw_records(state, game) {
         var records_div = document.getElementById("records");
         clue.companion.html.remove_children(records_div);
         var table = document.createElement("TABLE");
         records_div.appendChild(table);
+        var tr = document.createElement("TR");
+        table.appendChild(tr);
         var th = document.createElement("TH");
-        table.appendChild(th);
+        tr.appendChild(th);
         th.innerHTML = "Records";
+        // Header 2
+        tr = document.createElement("TR");
+        table.appendChild(tr);
+        th = document.createElement("TH");
+        tr.appendChild(th);
+        th.innerHTML = "Suggester";
+        th = document.createElement("TH");
+        tr.appendChild(th);
+        th.innerHTML = "Suspect";
+        th = document.createElement("TH");
+        tr.appendChild(th);
+        th.innerHTML = "Room";
+        th = document.createElement("TH");
+        tr.appendChild(th);
+        th.innerHTML = "Weapon";
+        th = document.createElement("TH");
+        tr.appendChild(th);
+        th.innerHTML = "Disputer";
+        th = document.createElement("TH");
+        tr.appendChild(th);
+        th.innerHTML = "Card";
         for (var ii = 0; ii < state.records.length; ii++) {
+            var tr = document.createElement("TR");
+            table.appendChild(tr);
+            var td = document.createElement("TD");
+            tr.appendChild(td);
         }
+        // Add Record
+        tr = document.createElement("TR");
+        table.appendChild(tr);
+        td = document.createElement("TD");
+        tr.appendChild(td);
     },
 };
 
