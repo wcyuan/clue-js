@@ -1185,10 +1185,11 @@ clue.companion.State = {
             player_cards: self.player_cards,
             records: self.records,
         };
+        var hash = self._to_query_string(params);
         if (should_update) {
-            window.location.hash = self._to_query_string(params);
+            window.location.hash = hash;
         }
-        return params;
+        return hash;
     },
     from_url_params: function(params) {
         var self = this;
@@ -1268,6 +1269,14 @@ clue.companion.html = {
         clue.companion.state = clue.companion.State.create();
         clue.companion.state.from_url_params();
         clue.companion.html.draw_all(clue.companion.state);
+        window.onhashchange = function() {
+            if (clue.companion.state.to_url_params() == window.location.hash) {
+                // don't re-draw if not necessary.  That way, if the window
+                // is showing a message, the message won't be reset or erased.
+                return;
+            }
+            clue.companion.state.from_url_params();
+        };	    
     },
     draw_all: function(state) {
         clue.companion.html.draw_players(state);
@@ -1288,7 +1297,21 @@ clue.companion.html = {
         clue.companion.html.remove_children(player_div);
         var table = document.createElement("TABLE");
         player_div.appendChild(table);
+        // Reset button
         var tr = document.createElement("TR");
+        table.appendChild(tr);
+        var td = document.createElement("TD");
+        tr.appendChild(td);
+        var reset_button = document.createElement("INPUT");
+        td.appendChild(reset_button);
+        reset_button.type = "button";
+        reset_button.value = "Reset";
+        clue.addEventListener(reset_button, "click", function() {
+            window.location.hash = "";
+            clue.companion.html.draw_all(state);
+        });
+        // Header
+        tr = document.createElement("TR");
         table.appendChild(tr);
         var th = document.createElement("TH");
         tr.appendChild(th);
