@@ -1430,12 +1430,40 @@ clue.companion.html = {
         // player
         td = document.createElement("TD");
         tr.appendChild(td);
+        var player_select = document.createElement("select");
+        td.appendChild(player_select);
+        for (var ii = 0; ii < state.player_names.length; ii++) {
+            var option = document.createElement("option");
+            player_select.appendChild(option);
+            option.setAttribute("value", state.player_names[ii]);
+            option.innerHTML = state.player_names[ii];
+        }
         // card
         td = document.createElement("TD");
         tr.appendChild(td);
+        var card_select = document.createElement("select");
+        td.appendChild(card_select);
+        for (var ii = 0; ii < game.categories.length; ii++) {
+            for (var jj = 0; jj < game.cards[game.categories[ii]].length; jj++) {
+                var option = document.createElement("option");
+                card_select.appendChild(option);
+                option.setAttribute("value", game.cards[game.categories[ii]][jj]);
+                option.innerHTML = game.cards[game.categories[ii]][jj];
+            }
+        }
         // add button
         td = document.createElement("TD");
         tr.appendChild(td);
+        var add_button = document.createElement("INPUT");
+        td.appendChild(add_button);
+        add_button.setAttribute("type", "button");
+        add_button.setAttribute("value", "Add");
+        clue.addEventListener(add_button, "click", (function(state, player_select, card_select) {
+        return function() {
+            state.add_player_card(player_select.value, card_select.value);
+            clue.companion.html.draw_all(state);
+        };
+        })(state, player_select, card_select));
     },
     draw_records(state, game) {
         var records_div = document.getElementById("records");
