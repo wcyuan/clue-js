@@ -1127,17 +1127,17 @@ clue.companion.State = {
             return game;
         }
         var record = game.players[0].record;
-        for (var ii = 0; ii < self.player_cards; ii++) {
+        for (var ii = 0; ii < self.player_cards.length; ii++) {
             record.set_player_card(
-                player_cards[ii][0],  // card (string)
-                player_cards[ii][1]); // player_name (string)
+                self.player_cards[ii][0],  // card (string)
+                self.player_cards[ii][1]); // player_name (string)
         }
-        for (var ii = 0; ii < self.records; ii++) {
+        for (var ii = 0; ii < self.records.length; ii++) {
             var suggester = game.find_player_by_name(self.records[ii][0]);
             var disputer = game.find_player_by_name(self.records[ii][2]);
             record.record_evidence(
                 suggester,
-                self.records[ii][1], // guess (array of cards)
+                self.records[ii][1], // guess (hash of cards)
                 disputer,
                 self.records[ii][3], // card (string)
             );
@@ -1616,6 +1616,10 @@ clue.companion.html = {
         tr.appendChild(td);
         var disputer_select = document.createElement("select");
         td.appendChild(disputer_select);
+        var option = document.createElement("option");
+        disputer_select.appendChild(option);
+        option.setAttribute("value", "");
+        option.innerHTML = "";
         for (var ii = 0; ii < state.player_names.length; ii++) {
             var option = document.createElement("option");
             disputer_select.appendChild(option);
@@ -1657,10 +1661,15 @@ clue.companion.html = {
                 if (card_select.value != "") {
                     card = card_select.value;
                 }
+                var disputer;
+                // If disputer_select.value is the empty string, translate that into undefined
+                if (disputer_select.value != "") {
+                    disputer = disputer_select.value;
+                }
                 state.add_record(
                     suggester_select.value,
                     guess,
-                    disputer_select.value,
+                    disputer,
                     card);
                 clue.companion.html.draw_all(state);
             };
